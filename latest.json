@@ -1,11 +1,11 @@
 {
-  "version": "1.0.12",
-  "notes": "本次更新:\n· 单图分析结果重新排序：完整提示词置前、结构化解析在后\n· 元数据精简，只保留耗时和图像比例\n· 批量分析实时结果区间距优化（完整提示词与结构化拆解间隔扩大）\n· 结构化项之间间距增加，更易阅读",
-  "pub_date": "2026-05-21T08:31:00Z",
-  "platforms": {
-    "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVnFaNjluMW83ZGZ6K0MvT25WQXkzcm5KOFpEZ25Fbmk1ZGNNTklDZEo0ZTUzaTZVRHU4bU1ZY24xaVBQVk8zTzdPaSt1QVlGOVhXL00vRzZRUFM1UWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5MzUyMjkxCWZpbGU6RUtPXzEuMC4xMl94NjQtc2V0dXAuZXhlCi9xYTJSV1N5UzJKcGJKUlVRNkNDWlAvMWcrOEZSY21UdXdWM3lGMExDaFRrRUZkZG5ocFFFcDRHMlBDWUhPKzhpU01VMVB0dTZKbDFyNForWjdaNUNnPT0K",
-      "url": "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.0.12/EKO_1.0.12_x64-setup.exe"
-    }
-  }
+    "version":  "1.0.13",
+    "notes":  "本次更新：提示词结果支持选取和编辑，复制时使用编辑后的内容。",
+    "pub_date":  "2026-05-26T03:12:06Z",
+    "platforms":  {
+                      "windows-x86_64":  {
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVnI1NEl2YnFSZFIyNnBLL2FSZzk3NCtPcFFpQ0VrSWRRVktyVUxkYStVdk81K1JxQ1RHaW8ra3UrZnlwRFpyRjhqWlZraHhSRzZHL21nS0FRU3VjNFEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY1MTEwCWZpbGU6RUtPXzEuMC4xM194NjQtc2V0dXAuZXhlClJLcnBlVFhZN3dRL2RzeThXa3VYbjZMOWRGZUQxeGE4aWVFd1Y5cW04MXAwc01nRHhKMktJZldNQWEydGtvbkVzeHdzSWRGL3Q1RnJKeEJWS3V0bERBPT0K",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.0.13/EKO_1.0.13_x64-setup.exe"
+                                         }
+                  }
 }
