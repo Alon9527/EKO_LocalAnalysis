@@ -1,11 +1,11 @@
 {
-    "version":  "1.0.15",
-    "notes":  "本次更新：重写 README 为对外项目介绍；历史记录详情提示词支持选取复制；批量分析会等待设置加载、补充失败原因提示，修复启动后直接批量分析容易失败的问题。",
-    "pub_date":  "2026-05-26T03:56:00Z",
+    "version":  "1.1.0",
+    "notes":  "本次更新：调整版本号策略，当前版本进入 v1.1.0；发布脚本以后会在 patch 达到 9 后自动进入下一个 minor，避免长期停留在 1.0.x。",
+    "pub_date":  "2026-05-26T04:07:06Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVmp3WXFLbGQzYngvWkRONVFVQjVUd0hmV0NVT1ViMTVSaXZNSWJKWGVFeGRoejZjTmhwM1hiZVdlTGVqbkFmek4rSy92NklrdmgzNUpPdEI3RUh5SGdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY3NzQ0CWZpbGU6RUtPXzEuMC4xNV94NjQtc2V0dXAuZXhlCjA2RTZOTkFudUF4bXJZcmtpcko0MThzM1hqbjQ4M1hINWF4VVlTS0ozeC85ZHBGcFdXMlZCSVFkdW1PU1JuSExhS0tlQi83a3ZWTmIxTXNaQTdEMUNRPT0K",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.0.15/EKO_1.0.15_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVnZjbllieUQySjg0MlBwWkxnZVhQRVMxRlNTY1NyQjlobkFleHJtcFhGQmZPK0hXYXFJNm9BbDd3anVIWHcvUTRCVXdMQWtNblpGei94bytGT1BIVXc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY4NDExCWZpbGU6RUtPXzEuMS4wX3g2NC1zZXR1cC5leGUKcmJaZUpKblBsY0dub1pWSzY5VEd2RnRkSVRtbU5UV2F5UksvTFI4a1BGaldqZ3dMamZyT0lMc0FMVEtOM3czckJ6c1pwWlpSSitNOEFJMDRFdFMyQ0E9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.0/EKO_1.1.0_x64-setup.exe"
                                          }
                   }
 }

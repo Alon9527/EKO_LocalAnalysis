@@ -1,5 +1,6 @@
 # EKO 一键发布脚本
-# 用法：.\publish.ps1 [-NewVersion 1.0.2]  (不传则自动 patch+1)
+# 用法：.\publish.ps1 [-NewVersion 1.1.0]
+# 不传 NewVersion 时自动递增：patch 小于 9 时 +1，patch 大于等于 9 时进入下一个 minor。
 
 param(
     [string]$NewVersion = "",
@@ -19,11 +20,29 @@ $env:PATH = "$CARGO_PATH;$env:PATH"
 $conf = Get-Content "src-tauri\tauri.conf.json" -Raw | ConvertFrom-Json
 $CurrentVersion = $conf.version
 
-# 自动 +patch 如未指定
+function Get-NextVersion([string]$Version) {
+    $parts = $Version.Split('.')
+    if ($parts.Length -ne 3) {
+        throw "版本号格式应为 major.minor.patch，例如 1.1.0"
+    }
+
+    $major = [int]$parts[0]
+    $minor = [int]$parts[1]
+    $patch = [int]$parts[2]
+
+    if ($patch -ge 9) {
+        $minor += 1
+        $patch = 0
+    } else {
+        $patch += 1
+    }
+
+    return "$major.$minor.$patch"
+}
+
+# 自动递增版本号
 if (-not $NewVersion) {
-    $parts = $CurrentVersion.Split('.')
-    $parts[2] = [int]$parts[2] + 1
-    $NewVersion = $parts -join '.'
+    $NewVersion = Get-NextVersion $CurrentVersion
 }
 
 Write-Host "==> 当前版本: $CurrentVersion" -ForegroundColor Cyan

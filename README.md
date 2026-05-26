@@ -30,8 +30,10 @@ npm run tauri -- dev
 
 ```powershell
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "your-signing-key-password"
-.\publish.ps1 -NewVersion 1.0.15 -Notes "更新说明"
+.\publish.ps1 -NewVersion 1.1.1 -Notes "更新说明"
 ```
+
+不指定 `-NewVersion` 时，发布脚本会自动递增版本号。patch 小于 9 时递增 patch；patch 大于等于 9 时进入下一个 minor，例如 `1.1.9` 的下一版是 `1.2.0`。
 
 ## License
 
