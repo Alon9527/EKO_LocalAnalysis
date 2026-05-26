@@ -253,9 +253,12 @@ const detailDimensions = (item: any) => {
                 复制
               </el-button>
             </div>
-            <el-card shadow="never" body-style="padding:14px">
-              <p class="text-[13px] text-white/65 leading-relaxed">{{ store.detailItem.prompt_zh }}</p>
-            </el-card>
+            <textarea
+              class="prompt-copy-field"
+              :value="store.detailItem.prompt_zh"
+              readonly
+              spellcheck="false"
+            />
           </div>
 
           <div class="mb-5">
@@ -266,9 +269,12 @@ const detailDimensions = (item: any) => {
                 复制
               </el-button>
             </div>
-            <el-card shadow="never" body-style="padding:14px">
-              <p class="text-[13px] text-white/65 leading-relaxed">{{ store.detailItem.prompt_en }}</p>
-            </el-card>
+            <textarea
+              class="prompt-copy-field"
+              :value="store.detailItem.prompt_en"
+              readonly
+              spellcheck="false"
+            />
           </div>
 
           <div class="flex gap-2 mt-auto">
@@ -316,5 +322,23 @@ const detailDimensions = (item: any) => {
 }
 :deep(.el-drawer__body) {
   padding: 0;
+}
+.prompt-copy-field {
+  width: 100%;
+  min-height: 170px;
+  resize: vertical;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.7;
+  outline: none;
+  user-select: text;
+}
+.prompt-copy-field:focus {
+  border-color: rgba(45, 212, 191, 0.38);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.08);
 }
 </style>

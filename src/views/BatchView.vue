@@ -114,6 +114,18 @@ async function addFolder() {
 }
 
 async function startBatch() {
+  if (!settingsStore.loaded) {
+    await settingsStore.load();
+  }
+  if (!settingsStore.settings.apiKey || settingsStore.settings.apiKey.trim() === "") {
+    ElMessage.error("API Key 未配置，请先到设置中心填写。");
+    return;
+  }
+  if (!settingsStore.settings.model || settingsStore.settings.model.trim() === "") {
+    ElMessage.error("模型名称未配置，请先到设置中心填写。");
+    return;
+  }
+
   running.value = true;
   paused.value = false;
   doneCount.value = 0;
@@ -147,6 +159,7 @@ async function startBatch() {
       } catch (err: any) {
         item.status = "failed";
         item.error = err?.message || "失败";
+        currentItem.value = item;
         failedCount.value++;
       }
     }
@@ -365,6 +378,15 @@ function updateStructFieldForCurrent(key: string, value: string) {
                 </div>
               </div>
             </template>
+          </div>
+          <div v-else-if="currentItem?.status === 'failed'" class="h-full flex items-center justify-center">
+            <el-alert
+              type="error"
+              title="分析失败"
+              :description="currentItem.error || '请检查 API Key、模型名称、网络连接或图片文件是否可读取。'"
+              :closable="false"
+              show-icon
+            />
           </div>
           <el-empty
             v-else

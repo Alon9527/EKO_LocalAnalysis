@@ -1,11 +1,11 @@
 {
-    "version":  "1.0.14",
-    "notes":  "本次更新：结构化提示词解析支持编辑；移除发布脚本中的硬编码签名密码；收窄 Tauri 文件系统权限；补充开源许可证和安全说明。",
-    "pub_date":  "2026-05-26T03:29:17Z",
+    "version":  "1.0.15",
+    "notes":  "本次更新：重写 README 为对外项目介绍；历史记录详情提示词支持选取复制；批量分析会等待设置加载、补充失败原因提示，修复启动后直接批量分析容易失败的问题。",
+    "pub_date":  "2026-05-26T03:56:00Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVm5MNk1YY1NLV0tBY1lmTnEzYlRYVFVnMmJ2SzVWd2o0R2ZUQjA5eVkxK0Nxd0RhajRwNHFzN3FMNWFoa3FIQkhZTmI0cmZvZzhtcDNUT3cvdEQ3K0FnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY2MTMzCWZpbGU6RUtPXzEuMC4xNF94NjQtc2V0dXAuZXhlCm5TUHdFdCtJQk5aVHhkTjZmbmVmK0xWTGp6c3QwMDQ5MGtWcHphbVZoZFg0WG9wd1ZzdkhTeSs5N05IL05QK20xUnJKRS9NU1BuNDNRYnAxd2tZTEFRPT0K",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.0.14/EKO_1.0.14_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVmp3WXFLbGQzYngvWkRONVFVQjVUd0hmV0NVT1ViMTVSaXZNSWJKWGVFeGRoejZjTmhwM1hiZVdlTGVqbkFmek4rSy92NklrdmgzNUpPdEI3RUh5SGdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY3NzQ0CWZpbGU6RUtPXzEuMC4xNV94NjQtc2V0dXAuZXhlCjA2RTZOTkFudUF4bXJZcmtpcko0MThzM1hqbjQ4M1hINWF4VVlTS0ozeC85ZHBGcFdXMlZCSVFkdW1PU1JuSExhS0tlQi83a3ZWTmIxTXNaQTdEMUNRPT0K",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.0.15/EKO_1.0.15_x64-setup.exe"
                                          }
                   }
 }
