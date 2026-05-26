@@ -17,11 +17,21 @@ const currentLang = ref<"zh" | "en">("zh");
 const copied = ref(false);
 const dragOver = ref(false);
 
-const promptText = computed(() => {
-  if (!store.result) return "";
-  return currentLang.value === "zh"
-    ? store.result.prompt_zh || store.result.prompt_en
-    : store.result.prompt_en || store.result.prompt_zh;
+const promptText = computed({
+  get() {
+    if (!store.result) return "";
+    return currentLang.value === "zh"
+      ? store.result.prompt_zh || store.result.prompt_en
+      : store.result.prompt_en || store.result.prompt_zh;
+  },
+  set(value: string) {
+    if (!store.result) return;
+    if (currentLang.value === "zh") {
+      store.result.prompt_zh = value;
+    } else {
+      store.result.prompt_en = value;
+    }
+  },
 });
 
 const structFields = computed(() => {
@@ -319,7 +329,11 @@ async function copyPrompt() {
               </el-button>
             </div>
           </template>
-          <p class="text-[14px] text-white/75 leading-[1.8] whitespace-pre-wrap break-words">{{ promptText }}</p>
+          <textarea
+            v-model="promptText"
+            class="prompt-editor"
+            spellcheck="false"
+          />
         </el-card>
 
         <!-- 3. Structured Prompt -->
@@ -411,5 +425,22 @@ async function copyPrompt() {
 }
 :deep(.el-descriptions__content) {
   color: rgba(255, 255, 255, 0.8) !important;
+}
+.prompt-editor {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 14px 16px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  line-height: 1.8;
+  outline: none;
+}
+.prompt-editor:focus {
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.1);
 }
 </style>

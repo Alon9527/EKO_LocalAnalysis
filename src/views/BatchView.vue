@@ -30,10 +30,21 @@ const currentItem = ref<BatchItem | null>(null);
 const avgTime = ref(0);
 const currentLang = ref<"zh" | "en">("zh");
 
-const promptText = computed(() => {
-  const r = currentItem.value?.result;
-  if (!r) return "";
-  return currentLang.value === "zh" ? (r.prompt_zh || r.prompt_en) : (r.prompt_en || r.prompt_zh);
+const promptText = computed({
+  get() {
+    const r = currentItem.value?.result;
+    if (!r) return "";
+    return currentLang.value === "zh" ? (r.prompt_zh || r.prompt_en) : (r.prompt_en || r.prompt_zh);
+  },
+  set(value: string) {
+    const r = currentItem.value?.result;
+    if (!r) return;
+    if (currentLang.value === "zh") {
+      r.prompt_zh = value;
+    } else {
+      r.prompt_en = value;
+    }
+  },
 });
 
 async function copyPromptBatch() {
@@ -316,7 +327,11 @@ function clearQueue() {
               <p class="text-[14px] font-semibold text-white/80 mb-3">
                 {{ currentLang === 'zh' ? '完整提示词（中文）' : '完整提示词（English）' }}
               </p>
-              <p class="text-[14px] text-white/75 leading-[1.85] whitespace-pre-wrap break-words">{{ promptText }}</p>
+              <textarea
+                v-model="promptText"
+                class="prompt-editor"
+                spellcheck="false"
+              />
             </div>
 
             <!-- Structured fields (bottom) -->
@@ -376,5 +391,22 @@ function clearQueue() {
 :deep(.el-empty__description) {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.4);
+}
+.prompt-editor {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 14px 16px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  line-height: 1.85;
+  outline: none;
+}
+.prompt-editor:focus {
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.1);
 }
 </style>
