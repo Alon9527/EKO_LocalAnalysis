@@ -81,9 +81,9 @@ const structFieldsForCurrent = computed(() => {
   return [
     { key: "style_prefix", label: labels.style_prefix, value: pick.style_prefix, icon: EditPen, color: "#a78bfa" },
     { key: "subject", label: labels.subject, value: pick.subject, icon: User, color: "#60a5fa" },
-    { key: "context", label: labels.context, value: pick.context_and_background, icon: PicIcon, color: "#34d399" },
+    { key: "context_and_background", label: labels.context, value: pick.context_and_background, icon: PicIcon, color: "#34d399" },
     { key: "lighting", label: labels.lighting, value: pick.lighting, icon: Sunny, color: "#fbbf24" },
-    { key: "camera", label: labels.camera, value: pick.camera_and_composition, icon: Camera, color: "#22d3ee" },
+    { key: "camera_and_composition", label: labels.camera, value: pick.camera_and_composition, icon: Camera, color: "#22d3ee" },
   ].filter((f) => f.value);
 });
 
@@ -174,6 +174,14 @@ function clearQueue() {
   queue.value = [];
   doneCount.value = 0;
   failedCount.value = 0;
+}
+
+function updateStructFieldForCurrent(key: string, value: string) {
+  const r: any = currentItem.value?.result;
+  if (!r?.reconstructed_prompt) return;
+  const useZh = currentLang.value === "zh" && r.reconstructed_prompt_zh;
+  const target = useZh ? r.reconstructed_prompt_zh : r.reconstructed_prompt;
+  target[key] = value;
 }
 </script>
 
@@ -345,7 +353,12 @@ function clearQueue() {
                     </div>
                     <div class="flex-1 min-w-0 pt-1">
                       <p class="text-[13px] font-semibold text-white/55 mb-2">{{ field.label }}</p>
-                      <p class="text-[15px] text-white/80 leading-relaxed">{{ field.value }}</p>
+                      <textarea
+                        :value="field.value"
+                        class="struct-editor"
+                        spellcheck="false"
+                        @input="updateStructFieldForCurrent(field.key, ($event.target as HTMLTextAreaElement).value)"
+                      />
                     </div>
                     <el-icon :size="20" color="#34d399" class="shrink-0 mt-2"><Check /></el-icon>
                   </div>
@@ -408,5 +421,22 @@ function clearQueue() {
 .prompt-editor:focus {
   border-color: rgba(45, 212, 191, 0.45);
   box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.1);
+}
+.struct-editor {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px 12px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 15px;
+  line-height: 1.75;
+  outline: none;
+}
+.struct-editor:focus {
+  border-color: rgba(45, 212, 191, 0.42);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.09);
 }
 </style>

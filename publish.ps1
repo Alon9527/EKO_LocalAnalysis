@@ -58,8 +58,19 @@ Set-Content "src-tauri\Cargo.toml" -Value $cargoToml -Encoding utf8
 # 2. 签名构建
 Write-Host ""
 Write-Host "==> 步骤 2/5: 签名构建（约 1 分钟）..." -ForegroundColor Cyan
-$env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content "eko.key" -Raw).Trim()
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "qwe123"
+if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
+    if (Test-Path "eko.key") {
+        $env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content "eko.key" -Raw).Trim()
+    } else {
+        Write-Host "❌ TAURI_SIGNING_PRIVATE_KEY 未设置，且未找到 eko.key" -ForegroundColor Red
+        exit 1
+    }
+}
+
+if (-not $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
+    Write-Host "❌ 请先设置 TAURI_SIGNING_PRIVATE_KEY_PASSWORD 环境变量" -ForegroundColor Red
+    exit 1
+}
 npx tauri build
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ 构建失败" -ForegroundColor Red

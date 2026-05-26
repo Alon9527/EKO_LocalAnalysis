@@ -1,11 +1,11 @@
 {
-    "version":  "1.0.13",
-    "notes":  "本次更新：提示词结果支持选取和编辑，复制时使用编辑后的内容。",
-    "pub_date":  "2026-05-26T03:12:06Z",
+    "version":  "1.0.14",
+    "notes":  "本次更新：结构化提示词解析支持编辑；移除发布脚本中的硬编码签名密码；收窄 Tauri 文件系统权限；补充开源许可证和安全说明。",
+    "pub_date":  "2026-05-26T03:29:17Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVnI1NEl2YnFSZFIyNnBLL2FSZzk3NCtPcFFpQ0VrSWRRVktyVUxkYStVdk81K1JxQ1RHaW8ra3UrZnlwRFpyRjhqWlZraHhSRzZHL21nS0FRU3VjNFEwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY1MTEwCWZpbGU6RUtPXzEuMC4xM194NjQtc2V0dXAuZXhlClJLcnBlVFhZN3dRL2RzeThXa3VYbjZMOWRGZUQxeGE4aWVFd1Y5cW04MXAwc01nRHhKMktJZldNQWEydGtvbkVzeHdzSWRGL3Q1RnJKeEJWS3V0bERBPT0K",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.0.13/EKO_1.0.13_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVm5MNk1YY1NLV0tBY1lmTnEzYlRYVFVnMmJ2SzVWd2o0R2ZUQjA5eVkxK0Nxd0RhajRwNHFzN3FMNWFoa3FIQkhZTmI0cmZvZzhtcDNUT3cvdEQ3K0FnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY2MTMzCWZpbGU6RUtPXzEuMC4xNF94NjQtc2V0dXAuZXhlCm5TUHdFdCtJQk5aVHhkTjZmbmVmK0xWTGp6c3QwMDQ5MGtWcHphbVZoZFg0WG9wd1ZzdkhTeSs5N05IL05QK20xUnJKRS9NU1BuNDNRYnAxd2tZTEFRPT0K",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.0.14/EKO_1.0.14_x64-setup.exe"
                                          }
                   }
 }
