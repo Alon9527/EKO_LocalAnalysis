@@ -6,7 +6,7 @@ import { uid, pathBasename, urlBasename } from "@/lib/utils";
 import RadarChart from "@/components/RadarChart.vue";
 import {
   Upload as ElUploadIcon, Document, Link, CopyDocument, Check, RefreshLeft,
-  Download as DownloadIcon, Star, Delete, Picture as PicIcon, User, Sunny,
+  Download as DownloadIcon, Star, Back, Picture as PicIcon, User, Sunny,
   Camera, EditPen, Aim
 } from "@element-plus/icons-vue";
 
@@ -391,7 +391,7 @@ function updateStructField(key: string, value: string) {
 
     <!-- Bottom Action Bar -->
     <div v-if="store.result" class="shrink-0 px-8 py-3 border-t border-white/[0.06] flex items-center justify-end gap-3">
-      <el-button size="large">
+      <el-button size="large" @click="store.reset()">
         <el-icon class="mr-1"><RefreshLeft /></el-icon>重新分析
       </el-button>
       <el-button type="primary" size="large">
@@ -400,8 +400,8 @@ function updateStructField(key: string, value: string) {
       <el-button type="warning" size="large" plain>
         <el-icon class="mr-1"><Star /></el-icon>加入收藏
       </el-button>
-      <el-button type="danger" size="large" plain>
-        <el-icon class="mr-1"><Delete /></el-icon>删除
+      <el-button size="large" plain @click="store.reset()">
+        <el-icon class="mr-1"><Back /></el-icon>返回
       </el-button>
     </div>
   </div>

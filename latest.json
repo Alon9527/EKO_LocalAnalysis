@@ -1,11 +1,11 @@
 {
-    "version":  "1.1.1",
-    "notes":  "本次更新：启动时自动后台检查更新；当有新版本时，左下角显示更新提醒，点击可进入设置中心处理更新。",
-    "pub_date":  "2026-05-26T04:14:52Z",
+    "version":  "1.1.2",
+    "notes":  "本次更新：单图分析结果页底部删除按钮改为返回按钮，点击后回到图片输入页面。",
+    "pub_date":  "2026-05-26T06:15:49Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVmw5enZhWnU1UlJ6Mm9KMlJXMkRralEvMmc1U29Hb28zZDhPbHBSVjM2UGlFT1VTVmFlNTFYUWJyamp5ZlJUdHNZLzRQR3c1aDJpU012NlNTYXlidGdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY4ODc2CWZpbGU6RUtPXzEuMS4xX3g2NC1zZXR1cC5leGUKYWhIa2tZS1UxUXRyU09ueEZzZTQwdE5YQzhLeXBxWktQQjhaQ1VUVEowSlB6UkdWM2dZb0pRUDFoenNBZjlobEtvR0lwaGh2L2o3Qll0UFpFek03RFE9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.1/EKO_1.1.1_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVnVZTnZjMEdzRTFSak5CeDRlUXlib01xNjd0MW5WVytET2s5UTBxS0dpVVV1cFYvS2xNZFpIZUJtOHpINmxVVkk3NFNuMi9sUXk3bWVNRFZuY0Q5TUFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Nzc2MDY1CWZpbGU6RUtPXzEuMS4yX3g2NC1zZXR1cC5leGUKR0xzc0swaG93M1kzNG44SGxzaGc4UlBBa2l6Vy9TSXhCSVNQVlJBVWZFZC9WT0k3OGNrS2hHa3hZMzhYRXlHTDFtWFphZ2FtMkJrbDA5UjM4OWR6QWc9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.2/EKO_1.1.2_x64-setup.exe"
                                          }
                   }
 }
