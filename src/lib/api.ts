@@ -151,6 +151,11 @@ export const api = {
     return invokeTauri("read_file_as_data_url", { filePath });
   },
 
+  async readThumbnailAsDataUrl(id: string): Promise<string> {
+    if (!isTauri) browserUnsupported("读取缩略图");
+    return invokeTauri("read_thumbnail_as_data_url", { id });
+  },
+
   async scanFolder(folderPath: string): Promise<string[]> {
     if (!isTauri) browserUnsupported("扫描文件夹");
     return invokeTauri("scan_folder", { folderPath });

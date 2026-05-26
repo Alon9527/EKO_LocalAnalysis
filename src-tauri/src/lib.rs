@@ -82,6 +82,27 @@ async fn read_file_as_data_url(file_path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn read_thumbnail_as_data_url(id: String) -> Result<String, String> {
+    let path = storage::thumbs_dir().join(format!("{}.jpg", id));
+    let data = std::fs::read(&path).map_err(|e| e.to_string())?;
+    let mime = detect_image_mime(&data);
+    let b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &data);
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
+fn detect_image_mime(data: &[u8]) -> &'static str {
+    if data.starts_with(&[0x89, b'P', b'N', b'G']) {
+        "image/png"
+    } else if data.starts_with(b"RIFF") && data.get(8..12) == Some(b"WEBP") {
+        "image/webp"
+    } else if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
+        "image/gif"
+    } else {
+        "image/jpeg"
+    }
+}
+
+#[tauri::command]
 async fn scan_folder(folder_path: String) -> Result<Vec<String>, String> {
     let exts = ["jpg", "jpeg", "png", "webp", "bmp", "gif"];
     let mut files = Vec::new();
@@ -119,6 +140,7 @@ pub fn run() {
             clear_history,
             export_items,
             read_file_as_data_url,
+            read_thumbnail_as_data_url,
             scan_folder,
         ])
         .run(tauri::generate_context!())

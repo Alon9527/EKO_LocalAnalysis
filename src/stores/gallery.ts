@@ -22,7 +22,8 @@ export const useGalleryStore = defineStore("gallery", () => {
       if (favOnly.value) query.favorite = true;
       const data = await api.getHistory(query);
       items.value = data.items || [];
-      // load thumbnails for each item asynchronously
+      // Load thumbnails asynchronously. Dragged/pasted images may not have a
+      // stable file path, so fall back to the cached thumbnail saved by Tauri.
       for (const item of items.value) {
         if (item.thumbUrl) continue;
         if (item.sourceType === "url" && item.imageUrl) {
@@ -30,7 +31,9 @@ export const useGalleryStore = defineStore("gallery", () => {
         } else if (item.filePath) {
           api.readFileAsDataUrl(item.filePath)
             .then((url) => { item.thumbUrl = url; })
-            .catch(() => {});
+            .catch(() => loadCachedThumbnail(item));
+        } else {
+          loadCachedThumbnail(item);
         }
       }
     } catch {
@@ -45,6 +48,12 @@ export const useGalleryStore = defineStore("gallery", () => {
     if (next.has(id)) next.delete(id);
     else next.add(id);
     selected.value = next;
+  }
+
+  function loadCachedThumbnail(item: HistoryItem) {
+    api.readThumbnailAsDataUrl(item.id)
+      .then((url) => { item.thumbUrl = url; })
+      .catch(() => {});
   }
 
   async function toggleFavorite(id: string) {
