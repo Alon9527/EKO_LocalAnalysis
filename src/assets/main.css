@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0a0f;
+  --color-foreground: rgba(255, 255, 255, 0.92);
+  --color-muted: rgba(255, 255, 255, 0.56);
+  --color-muted-foreground: rgba(255, 255, 255, 0.32);
+  --color-card: rgba(255, 255, 255, 0.04);
+  --color-card-foreground: rgba(255, 255, 255, 0.92);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-input: rgba(255, 255, 255, 0.04);
+  --color-ring: rgba(45, 212, 191, 0.3);
+  --color-accent: #2dd4bf;
+  --color-accent-foreground: #0a0a0f;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-destructive: #f87171;
+  --color-info: #60a5fa;
+  --color-surface: #12121a;
+  --color-elevated: #1a1a24;
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  /* enable Element Plus dark mode */
+  color-scheme: dark;
+}
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, "SF Pro Display", "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+
+/* Element Plus theme overrides — teal accent on dark glass */
+html.dark, html {
+  --el-color-primary: #2dd4bf;
+  --el-color-primary-light-3: #5eead4;
+  --el-color-primary-light-5: #99f6e4;
+  --el-color-primary-light-7: rgba(45, 212, 191, 0.3);
+  --el-color-primary-light-8: rgba(45, 212, 191, 0.2);
+  --el-color-primary-light-9: rgba(45, 212, 191, 0.1);
+  --el-color-primary-dark-2: #14b8a6;
+  --el-bg-color: transparent;
+  --el-bg-color-page: transparent;
+  --el-bg-color-overlay: #16161e;
+  --el-text-color-primary: rgba(255, 255, 255, 0.92);
+  --el-text-color-regular: rgba(255, 255, 255, 0.78);
+  --el-text-color-secondary: rgba(255, 255, 255, 0.55);
+  --el-text-color-placeholder: rgba(255, 255, 255, 0.3);
+  --el-border-color: rgba(255, 255, 255, 0.1);
+  --el-border-color-light: rgba(255, 255, 255, 0.08);
+  --el-border-color-lighter: rgba(255, 255, 255, 0.06);
+  --el-fill-color: rgba(255, 255, 255, 0.04);
+  --el-fill-color-light: rgba(255, 255, 255, 0.06);
+  --el-fill-color-lighter: rgba(255, 255, 255, 0.03);
+  --el-fill-color-blank: transparent;
+}
