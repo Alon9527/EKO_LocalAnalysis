@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { useSettingsStore } from "@/stores/settings";
+import { useUpdateStore } from "@/stores/update";
 import TitleBar from "@/components/TitleBar.vue";
 import SideBar from "@/components/SideBar.vue";
 
 const settingsStore = useSettingsStore();
+const updateStore = useUpdateStore();
 
 onMounted(() => {
   settingsStore.load();
+  updateStore.check(true);
 });
 </script>
 

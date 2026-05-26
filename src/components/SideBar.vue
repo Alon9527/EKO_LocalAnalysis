@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from "vue-router";
-import { Picture, Files, Clock, Download, Setting } from "@element-plus/icons-vue";
+import { Picture, Files, Clock, Download, Setting, Refresh } from "@element-plus/icons-vue";
+import { useUpdateStore } from "@/stores/update";
 
 const route = useRoute();
 const router = useRouter();
+const updateStore = useUpdateStore();
 
 const navItems = [
   { path: "/single", label: "单图分析", icon: Picture },
@@ -15,6 +17,10 @@ const navItems = [
 
 function handleSelect(index: string) {
   router.push(index);
+}
+
+function openUpdate() {
+  router.push("/settings");
 }
 </script>
 
@@ -49,6 +55,23 @@ function handleSelect(index: string) {
         <template #title>{{ item.label }}</template>
       </el-menu-item>
     </el-menu>
+
+    <div class="mt-auto px-4 pb-5">
+      <button
+        v-if="updateStore.updateAvailable"
+        class="update-notice"
+        type="button"
+        @click="openUpdate"
+      >
+        <span class="update-notice__icon">
+          <el-icon :size="16"><Refresh /></el-icon>
+        </span>
+        <span class="min-w-0 text-left">
+          <span class="block text-[13px] font-semibold leading-5">发现新版本</span>
+          <span class="block text-[12px] text-teal-100/70 truncate">v{{ updateStore.version }} 可更新</span>
+        </span>
+      </button>
+    </div>
   </aside>
 </template>
 
@@ -90,5 +113,34 @@ function handleSelect(index: string) {
   margin-right: 14px !important;
   width: 22px;
   font-size: 22px !important;
+}
+.update-notice {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(45, 212, 191, 0.32);
+  background: rgba(45, 212, 191, 0.13);
+  padding: 11px 12px;
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+.update-notice:hover {
+  border-color: rgba(45, 212, 191, 0.55);
+  background: rgba(45, 212, 191, 0.18);
+  transform: translateY(-1px);
+}
+.update-notice__icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(45, 212, 191, 0.18);
+  color: #2dd4bf;
 }
 </style>

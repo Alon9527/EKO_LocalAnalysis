@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { useGalleryStore } from "@/stores/gallery";
+import { useUpdateStore } from "@/stores/update";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Setting, Delete, Check, Refresh } from "@element-plus/icons-vue";
 
@@ -27,10 +28,10 @@ async function checkUpdate() {
   }
   checking.value = true;
   try {
-    const { check } = await import("@tauri-apps/plugin-updater");
-    const update = await check();
+    const update = await updateStore.check(false);
     if (!update) {
       ElMessage.success(`已是最新版本 v${currentVersion.value}`);
+      updateStore.clear();
       return;
     }
     await ElMessageBox.confirm(
@@ -68,6 +69,7 @@ async function checkUpdate() {
     });
 
     downloadStatus.value = "安装中，应用即将重启...";
+    updateStore.clear();
     const { relaunch } = await import("@tauri-apps/plugin-process");
     await relaunch();
   } catch (err: any) {
@@ -82,6 +84,7 @@ async function checkUpdate() {
 
 const settingsStore = useSettingsStore();
 const galleryStore = useGalleryStore();
+const updateStore = useUpdateStore();
 
 const form = ref({
   providerType: "gemini-native",

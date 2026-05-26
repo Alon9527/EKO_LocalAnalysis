@@ -1,11 +1,11 @@
 {
-    "version":  "1.1.0",
-    "notes":  "本次更新：调整版本号策略，当前版本进入 v1.1.0；发布脚本以后会在 patch 达到 9 后自动进入下一个 minor，避免长期停留在 1.0.x。",
-    "pub_date":  "2026-05-26T04:07:06Z",
+    "version":  "1.1.1",
+    "notes":  "本次更新：启动时自动后台检查更新；当有新版本时，左下角显示更新提醒，点击可进入设置中心处理更新。",
+    "pub_date":  "2026-05-26T04:14:52Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVnZjbllieUQySjg0MlBwWkxnZVhQRVMxRlNTY1NyQjlobkFleHJtcFhGQmZPK0hXYXFJNm9BbDd3anVIWHcvUTRCVXdMQWtNblpGei94bytGT1BIVXc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY4NDExCWZpbGU6RUtPXzEuMS4wX3g2NC1zZXR1cC5leGUKcmJaZUpKblBsY0dub1pWSzY5VEd2RnRkSVRtbU5UV2F5UksvTFI4a1BGaldqZ3dMamZyT0lMc0FMVEtOM3czckJ6c1pwWlpSSitNOEFJMDRFdFMyQ0E9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.0/EKO_1.1.0_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVmw5enZhWnU1UlJ6Mm9KMlJXMkRralEvMmc1U29Hb28zZDhPbHBSVjM2UGlFT1VTVmFlNTFYUWJyamp5ZlJUdHNZLzRQR3c1aDJpU012NlNTYXlidGdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzY4ODc2CWZpbGU6RUtPXzEuMS4xX3g2NC1zZXR1cC5leGUKYWhIa2tZS1UxUXRyU09ueEZzZTQwdE5YQzhLeXBxWktQQjhaQ1VUVEowSlB6UkdWM2dZb0pRUDFoenNBZjlobEtvR0lwaGh2L2o3Qll0UFpFek03RFE9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.1/EKO_1.1.1_x64-setup.exe"
                                          }
                   }
 }
