@@ -1,11 +1,11 @@
 {
-    "version":  "1.1.2",
-    "notes":  "本次更新：单图分析结果页底部删除按钮改为返回按钮，点击后回到图片输入页面。",
-    "pub_date":  "2026-05-26T06:15:49Z",
+    "version":  "1.1.3",
+    "notes":  "本次更新：修复单图拖拽上传无反应、历史详情删除按钮无响应；设置中心界面改为更紧凑；历史图片支持点击查看大图。",
+    "pub_date":  "2026-05-26T07:35:33Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVnVZTnZjMEdzRTFSak5CeDRlUXlib01xNjd0MW5WVytET2s5UTBxS0dpVVV1cFYvS2xNZFpIZUJtOHpINmxVVkk3NFNuMi9sUXk3bWVNRFZuY0Q5TUFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Nzc2MDY1CWZpbGU6RUtPXzEuMS4yX3g2NC1zZXR1cC5leGUKR0xzc0swaG93M1kzNG44SGxzaGc4UlBBa2l6Vy9TSXhCSVNQVlJBVWZFZC9WT0k3OGNrS2hHa3hZMzhYRXlHTDFtWFphZ2FtMkJrbDA5UjM4OWR6QWc9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.2/EKO_1.1.2_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVm5Tc2xGY0tiVDFzZCtpUnI2dENUYlZSN0dVU1hnVElUR01xRWZleEx3V3UvYnJ4bVc0SmxRWjFsZXREa3lGS1BrcHFNOE5GWCt3MmMrL3RBbXVuVndBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NzgwOTA1CWZpbGU6RUtPXzEuMS4zX3g2NC1zZXR1cC5leGUKT0ZGZnlta0creXJjeE90VTk2MFMzRHRmS0lvelNJWFJjM1hwMGkwUzN2ZStEZ1BSenQxS0JNQkJhNEdQZmNRdzVMMGJ5WXNnU3VFd3VOZHhwYzZVQkE9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.3/EKO_1.1.3_x64-setup.exe"
                                          }
                   }
 }

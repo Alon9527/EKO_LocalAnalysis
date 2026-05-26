@@ -56,7 +56,7 @@ async function checkUpdate() {
           downloaded += event.data.chunkLength;
           if (totalBytes > 0) {
             downloadProgress.value = Math.round((downloaded / totalBytes) * 100);
-            downloadStatus.value = `下载中 ${(downloaded / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB`;
+            downloadStatus.value = `下载中 ${downloadProgress.value}% (${(downloaded / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`;
           } else {
             downloadStatus.value = `已下载 ${(downloaded / 1024 / 1024).toFixed(1)} MB`;
           }
@@ -140,23 +140,23 @@ async function clearAll() {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto px-10 py-10">
+  <div class="h-full overflow-y-auto px-8 py-6">
     <div data-tauri-drag-region class="h-1" />
-    <div class="max-w-[920px] mx-auto space-y-7">
+    <div class="max-w-[820px] mx-auto space-y-4">
       <!-- API Settings -->
       <el-card>
         <template #header>
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center">
-              <el-icon :size="22" color="#2dd4bf"><Setting /></el-icon>
+            <div class="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center">
+              <el-icon :size="18" color="#2dd4bf"><Setting /></el-icon>
             </div>
-            <span class="text-[22px] font-semibold text-white/90">API 设置</span>
+            <span class="text-[18px] font-semibold text-white/90">API 设置</span>
           </div>
         </template>
 
-        <el-form :model="form" label-position="top" size="large" class="settings-form">
+        <el-form :model="form" label-position="top" size="default" class="settings-form">
           <el-form-item label="服务提供方">
-            <el-select v-model="form.providerType" size="large" style="width: 100%">
+            <el-select v-model="form.providerType" size="default" style="width: 100%">
               <el-option label="Gemini 原生接口" value="gemini-native" />
               <el-option label="OpenAI 兼容接口" value="openai-compatible" />
             </el-select>
@@ -166,7 +166,7 @@ async function clearAll() {
             <el-input
               v-model="form.apiKey"
               type="password"
-              size="large"
+              size="default"
               placeholder="请输入 API 密钥"
               show-password
             />
@@ -175,7 +175,7 @@ async function clearAll() {
           <el-form-item label="Base URL（仅 OpenAI 兼容接口）">
             <el-input
               v-model="form.baseUrl"
-              size="large"
+              size="default"
               placeholder="https://api.openai.com/v1"
             />
           </el-form-item>
@@ -183,7 +183,7 @@ async function clearAll() {
           <el-form-item label="模型">
             <el-input
               v-model="form.model"
-              size="large"
+              size="default"
               placeholder="gemini-2.5-flash / gpt-4o"
             />
           </el-form-item>
@@ -194,7 +194,7 @@ async function clearAll() {
                 v-model="form.timeoutMs"
                 :min="5000"
                 :step="1000"
-                size="large"
+                size="default"
                 controls-position="right"
                 style="width: 100%"
               />
@@ -204,7 +204,7 @@ async function clearAll() {
                 v-model="form.concurrency"
                 :min="1"
                 :max="20"
-                size="large"
+                size="default"
                 controls-position="right"
                 style="width: 100%"
               />
@@ -213,13 +213,13 @@ async function clearAll() {
 
           <div class="grid grid-cols-2 gap-5">
             <el-form-item label="默认语言">
-              <el-select v-model="form.defaultLanguage" size="large" style="width: 100%">
+              <el-select v-model="form.defaultLanguage" size="default" style="width: 100%">
                 <el-option label="中文" value="zh" />
                 <el-option label="English" value="en" />
               </el-select>
             </el-form-item>
             <el-form-item label="主题">
-              <el-select v-model="form.themeMode" size="large" style="width: 100%">
+              <el-select v-model="form.themeMode" size="default" style="width: 100%">
                 <el-option label="深色" value="dark" />
                 <el-option label="浅色" value="light" />
               </el-select>
@@ -227,7 +227,7 @@ async function clearAll() {
           </div>
 
           <div class="pt-3">
-            <el-button type="primary" size="large" :loading="saving" @click="save">
+            <el-button type="primary" size="default" :loading="saving" @click="save">
               <el-icon class="mr-1.5"><Check /></el-icon>保存设置
             </el-button>
           </div>
@@ -238,25 +238,25 @@ async function clearAll() {
       <el-card>
         <template #header>
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">
-              <el-icon :size="22" color="#60a5fa"><Refresh /></el-icon>
+            <div class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+              <el-icon :size="18" color="#60a5fa"><Refresh /></el-icon>
             </div>
-            <span class="text-[22px] font-semibold text-white/90">关于与更新</span>
+            <span class="text-[18px] font-semibold text-white/90">关于与更新</span>
           </div>
         </template>
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p class="text-[15px] text-white/75 font-medium mb-1">图片反推工具</p>
+            <p class="text-[13px] text-white/75 font-medium mb-1">图片反推工具</p>
             <p class="text-[13px] text-white/45">当前版本：v{{ currentVersion }}</p>
           </div>
-          <el-button type="primary" size="large" :loading="checking" @click="checkUpdate">
+          <el-button type="primary" size="default" :loading="checking" @click="checkUpdate">
             <el-icon class="mr-1.5"><Refresh /></el-icon>检查更新
           </el-button>
         </div>
       </el-card>
 
       <!-- Download Progress Dialog -->
-      <el-dialog v-model="downloadVisible" title="正在更新" :show-close="false" :close-on-click-modal="false" :close-on-press-escape="false" width="480px">
+      <el-dialog v-model="downloadVisible" title="正在更新" :show-close="false" :close-on-click-modal="false" :close-on-press-escape="false" width="420px">
         <p class="text-[14px] text-white/70 mb-4">{{ downloadStatus }}</p>
         <el-progress :percentage="downloadProgress" :stroke-width="14" :text-inside="true" />
         <p class="text-[12px] text-white/40 mt-3">下载完成后会自动重启应用</p>
@@ -266,17 +266,17 @@ async function clearAll() {
       <el-card>
         <template #header>
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center">
-              <el-icon :size="22" color="#f87171"><Delete /></el-icon>
+            <div class="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
+              <el-icon :size="18" color="#f87171"><Delete /></el-icon>
             </div>
-            <span class="text-[22px] font-semibold text-white/90">数据管理</span>
+            <span class="text-[18px] font-semibold text-white/90">数据管理</span>
           </div>
         </template>
 
-        <p class="text-[15px] text-white/55 leading-relaxed mb-5">
+        <p class="text-[13px] text-white/55 leading-relaxed mb-4">
           清除所有历史记录和缓存的缩略图数据。此操作不可恢复。
         </p>
-        <el-button type="danger" size="large" plain @click="clearAll">
+        <el-button type="danger" size="default" plain @click="clearAll">
           <el-icon class="mr-1.5"><Delete /></el-icon>清除全部数据
         </el-button>
       </el-card>
@@ -288,32 +288,32 @@ async function clearAll() {
 :deep(.el-card) {
   background-color: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  border-radius: 14px;
 }
 :deep(.el-card__header) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 20px 28px;
+  padding: 14px 20px;
 }
 :deep(.el-card__body) {
-  padding: 28px;
+  padding: 18px 20px;
 }
 :deep(.settings-form .el-form-item) {
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 :deep(.settings-form .el-form-item__label) {
-  font-size: 15px !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
   color: rgba(255, 255, 255, 0.75) !important;
-  padding-bottom: 8px !important;
+  padding-bottom: 5px !important;
   line-height: 1.4 !important;
 }
 :deep(.settings-form .el-input__wrapper),
 :deep(.settings-form .el-select__wrapper),
 :deep(.settings-form .el-input-number) {
-  font-size: 15px !important;
+  font-size: 13px !important;
 }
 :deep(.settings-form .el-input__inner) {
-  height: 48px !important;
-  font-size: 15px !important;
+  height: 36px !important;
+  font-size: 13px !important;
 }
 </style>

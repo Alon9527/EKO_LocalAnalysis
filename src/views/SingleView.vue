@@ -87,18 +87,42 @@ async function handleFileClick() {
   }
 }
 
-function handleDrop(e: DragEvent) {
+function analyzeDataUrl(file: File, dataUrl: string) {
+  const base64 = dataUrl.split(",")[1];
+  const mimeType = dataUrl.split(";")[0].split(":")[1] || file.type || "image/png";
+  store.analyze(
+    { id: uid(), sourceType: "clipboard", base64Data: base64, mimeType, fileName: file.name || "dropped-image.png" },
+    dataUrl
+  );
+}
+
+async function handleDrop(e: DragEvent) {
   e.preventDefault();
+  e.stopPropagation();
   dragOver.value = false;
   const file = e.dataTransfer?.files?.[0];
   if (file) {
     const filePath = (file as any).path;
     if (filePath) {
-      api.readFileAsDataUrl(filePath).then((dataUrl) => {
-        store.analyze({ id: uid(), sourceType: "file", filePath, fileName: file.name }, dataUrl);
-      });
+      const dataUrl = await api.readFileAsDataUrl(filePath);
+      store.analyze(
+        { id: uid(), sourceType: "file", filePath, fileName: file.name || pathBasename(filePath) },
+        dataUrl
+      );
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = () => analyzeDataUrl(file, reader.result as string);
+    reader.readAsDataURL(file);
   }
+}
+
+function handleDragLeave(e: DragEvent) {
+  const current = e.currentTarget as HTMLElement | null;
+  const related = e.relatedTarget as Node | null;
+  if (current && related && current.contains(related)) return;
+  dragOver.value = false;
 }
 
 function handlePaste(e: ClipboardEvent) {
@@ -109,15 +133,7 @@ function handlePaste(e: ClipboardEvent) {
       const blob = item.getAsFile();
       if (!blob) continue;
       const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        const base64 = dataUrl.split(",")[1];
-        const mimeType = dataUrl.split(";")[0].split(":")[1];
-        store.analyze(
-          { id: uid(), sourceType: "clipboard", base64Data: base64, mimeType, fileName: "clipboard.png" },
-          dataUrl
-        );
-      };
+      reader.onload = () => analyzeDataUrl(blob, reader.result as string);
       reader.readAsDataURL(blob);
       return;
     }
@@ -184,8 +200,9 @@ function updateStructField(key: string, value: string) {
       <div
         @click="handleFileClick"
         @dragover.prevent="dragOver = true"
-        @dragleave="dragOver = false"
-        @drop="handleDrop"
+        @dragenter.prevent="dragOver = true"
+        @dragleave="handleDragLeave"
+        @drop.prevent="handleDrop"
         class="w-full max-w-[1100px] h-[520px] flex flex-col items-center justify-center border-2 border-dashed rounded-[28px] cursor-pointer transition-all duration-300 bg-gradient-to-b from-white/[0.03] to-white/[0.01]"
         :class="dragOver
           ? 'border-teal-400/55 bg-teal-400/[0.05]'

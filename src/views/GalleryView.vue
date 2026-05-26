@@ -3,7 +3,7 @@ import { ref, onMounted } from "vue";
 import { useGalleryStore } from "@/stores/gallery";
 import { api } from "@/lib/api";
 import RadarChart from "@/components/RadarChart.vue";
-import { ElMessageBox } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Search, Star, StarFilled, Download, Delete, Close, CopyDocument, Check,
   Grid, List, RefreshLeft, Picture as PicIcon
@@ -59,6 +59,25 @@ async function deleteSelected() {
     await ElMessageBox.confirm(`确定删除选中的 ${store.selectedCount} 条记录吗？`, "删除确认", { type: "warning" });
     await store.deleteSelected();
   } catch { /* cancelled */ }
+}
+
+async function deleteDetailItem() {
+  if (!store.detailItem) return;
+  const id = store.detailItem.id;
+  try {
+    await ElMessageBox.confirm("确定删除这条历史记录吗？此操作不可恢复。", "删除确认", {
+      type: "warning",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+      confirmButtonClass: "el-button--danger",
+    });
+    await api.deleteHistory([id]);
+    store.closeDetail();
+    await store.load();
+    ElMessage.success("记录已删除");
+  } catch {
+    /* cancelled */
+  }
 }
 
 async function copyText(text: string, field: string) {
@@ -230,7 +249,16 @@ const detailDimensions = (item: any) => {
           </div>
 
           <el-card shadow="never" body-style="padding:0" class="mb-4 overflow-hidden">
-            <img v-if="store.detailItem.thumbUrl" :src="store.detailItem.thumbUrl" class="w-full aspect-video object-cover" alt="" />
+            <el-image
+              v-if="store.detailItem.thumbUrl"
+              :src="store.detailItem.thumbUrl"
+              :preview-src-list="[store.detailItem.thumbUrl]"
+              :initial-index="0"
+              :z-index="4000"
+              fit="cover"
+              preview-teleported
+              class="history-detail-image"
+            />
           </el-card>
 
           <!-- Quality Score -->
@@ -284,7 +312,7 @@ const detailDimensions = (item: any) => {
             <el-button type="primary" size="default">
               <el-icon class="mr-1"><Download /></el-icon>导出
             </el-button>
-            <el-button type="danger" size="default" plain>
+            <el-button type="danger" size="default" plain @click="deleteDetailItem">
               <el-icon class="mr-1"><Delete /></el-icon>删除
             </el-button>
           </div>
@@ -340,5 +368,16 @@ const detailDimensions = (item: any) => {
 .prompt-copy-field:focus {
   border-color: rgba(45, 212, 191, 0.38);
   box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.08);
+}
+.history-detail-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  cursor: zoom-in;
+}
+:deep(.history-detail-image .el-image__inner) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>
