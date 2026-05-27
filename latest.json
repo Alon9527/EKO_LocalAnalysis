@@ -1,11 +1,11 @@
 {
-    "version":  "1.1.4",
-    "notes":  "本次更新：修复单图分析后返回，再到历史记录查看时图片缩略图可能显示为黑块的问题。历史记录现在会从缓存缩略图兜底读取图片。",
-    "pub_date":  "2026-05-26T11:19:24Z",
+    "version":  "1.1.5",
+    "notes":  "本次更新：修复单图分析菜单下拖拽图片时可能通过前端 base64 路径分析导致兼容接口请求失败的问题。拖拽文件现在优先使用 Tauri 原生文件路径事件，与点击选择文件走同一条分析链路。",
+    "pub_date":  "2026-05-27T03:00:19Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVmdPZXl1Nlo2bG52SEs2UXd2RjdBek52dzlNc3JoTktaUDRMemRUSDQxTGhXV1g0SjlJamxYZEVSTDF4bjZIVVlLY3lvYzVtSjZZRlI2VXRIREt1bFFNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5Nzk0MzQxCWZpbGU6RUtPXzEuMS40X3g2NC1zZXR1cC5leGUKck9mQ2FMdHBZRnZNeGlkMkpaMnYzakZuQmpqV1duZFdZUjlLajZDaGlrWXB4ZmRxakdPWTFmR2pINmFNTGJtUlF5V0dFaUtwK0t3OHJoZ1FpbWduQkE9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.4/EKO_1.1.4_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSREF0T3c3VG1GVmxZekgwVXoxc2Nnd0lISEVLQnFxcWFNZTZKdEV1TTlralNqeEZkV3JxaUw1ZGs5LzVHU05WZFd2Z0Q1RUpIVk8wZW9xZkgrdjRPcmpkZmUzcVhBRHdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5ODUwNjQyCWZpbGU6RUtPXzEuMS41X3g2NC1zZXR1cC5leGUKMHJQRkp5dlpETUZMMTV0ZDh6dnlaeUZkWm5mRERmb2x1UFUvVldYWEtVN2lXSnhMaUxZQSs3U2pMbHNxeUNSOEJ2K29OS3h1NWd3TU1BbWhXaE9PQWc9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.1.5/EKO_1.1.5_x64-setup.exe"
                                          }
                   }
 }

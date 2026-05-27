@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onBeforeUnmount, onMounted } from "vue";
 import { useAnalysisStore } from "@/stores/analysis";
 import { api } from "@/lib/api";
 import { uid, pathBasename, urlBasename } from "@/lib/utils";
@@ -16,6 +16,33 @@ const urlValue = ref("");
 const currentLang = ref<"zh" | "en">("zh");
 const copied = ref(false);
 const dragOver = ref(false);
+let unlistenTauriDrop: (() => void) | null = null;
+
+onMounted(async () => {
+  if (!(window as any).__TAURI_INTERNALS__) return;
+  try {
+    const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+    unlistenTauriDrop = await getCurrentWebview().onDragDropEvent((event) => {
+      if (store.result || store.analyzing || inputMode.value !== "file") return;
+      if (event.payload.type === "enter" || event.payload.type === "over") {
+        dragOver.value = true;
+      } else if (event.payload.type === "leave") {
+        dragOver.value = false;
+      } else if (event.payload.type === "drop") {
+        dragOver.value = false;
+        const filePath = event.payload.paths?.[0];
+        if (filePath) analyzeFilePath(filePath);
+      }
+    });
+  } catch {
+    // Browser preview keeps using regular drop events.
+  }
+});
+
+onBeforeUnmount(() => {
+  unlistenTauriDrop?.();
+  unlistenTauriDrop = null;
+});
 
 const promptText = computed({
   get() {
@@ -81,10 +108,13 @@ const qualityDescription = computed(() => {
 async function handleFileClick() {
   const files = await api.openFiles();
   if (files.length) {
-    const filePath = files[0];
-    const dataUrl = await api.readFileAsDataUrl(filePath);
-    store.analyze({ id: uid(), sourceType: "file", filePath, fileName: pathBasename(filePath) }, dataUrl);
+    await analyzeFilePath(files[0]);
   }
+}
+
+async function analyzeFilePath(filePath: string) {
+  const dataUrl = await api.readFileAsDataUrl(filePath);
+  store.analyze({ id: uid(), sourceType: "file", filePath, fileName: pathBasename(filePath) }, dataUrl);
 }
 
 function analyzeDataUrl(file: File, dataUrl: string) {
@@ -104,11 +134,7 @@ async function handleDrop(e: DragEvent) {
   if (file) {
     const filePath = (file as any).path;
     if (filePath) {
-      const dataUrl = await api.readFileAsDataUrl(filePath);
-      store.analyze(
-        { id: uid(), sourceType: "file", filePath, fileName: file.name || pathBasename(filePath) },
-        dataUrl
-      );
+      await analyzeFilePath(filePath);
       return;
     }
 
