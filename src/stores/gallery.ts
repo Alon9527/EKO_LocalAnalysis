@@ -50,6 +50,14 @@ export const useGalleryStore = defineStore("gallery", () => {
     selected.value = next;
   }
 
+  function selectAll() {
+    selected.value = new Set(items.value.map((item) => item.id));
+  }
+
+  function clearSelection() {
+    selected.value = new Set();
+  }
+
   function loadCachedThumbnail(item: HistoryItem) {
     api.readThumbnailAsDataUrl(item.id)
       .then((url) => { item.thumbUrl = url; })
@@ -86,6 +94,6 @@ export const useGalleryStore = defineStore("gallery", () => {
   return {
     items, selected, keyword, minScore, favOnly, detailItem, loading,
     selectedCount, load, toggleSelect, toggleFavorite, deleteSelected,
-    clearAll, openDetail, closeDetail,
+    selectAll, clearSelection, clearAll, openDetail, closeDetail,
   };
 });

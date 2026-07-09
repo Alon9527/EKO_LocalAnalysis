@@ -19,6 +19,7 @@ pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<Hist
 
     let elapsed = start.elapsed().as_millis() as u64;
 
+    let structured_prompt = build_structured_prompt(&result);
     let quality = compute_quality_from_json(&result);
 
     let item = HistoryItem {
@@ -29,9 +30,9 @@ pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<Hist
         source_type: task.source_type.clone(),
         aspect_ratio: result.get("aspect_ratio").and_then(|v| v.as_str()).map(|s| s.to_string()),
         contains_people: result.get("contains_people").and_then(|v| v.as_bool()),
-        reconstructed_prompt: result.get("reconstructed_prompt").cloned(),
-        reconstructed_prompt_zh: result.get("reconstructed_prompt_zh").cloned(),
-        quality_notes: result.get("quality_notes").and_then(|v| serde_json::from_value(v.clone()).ok()),
+        reconstructed_prompt: Some(structured_prompt),
+        reconstructed_prompt_zh: None,
+        quality_notes: None,
         prompt_en: result.get("prompt_en").and_then(|v| v.as_str()).map(|s| s.to_string()),
         prompt_zh: result.get("prompt_zh").and_then(|v| v.as_str()).map(|s| s.to_string()),
         quality_score: quality.0,
@@ -109,22 +110,78 @@ fn save_thumbnail(task_id: &str, base64_data: &str) {
 }
 
 fn build_inference_instruction() -> String {
-    r#"You are a senior vision prompt reverse-engineer for Google Gemini and Imagen workflows.
-Analyze the provided reference image and return ONLY valid JSON.
+    r#"你是一个图片反推提示词大师，专门把用户上传或提供的参考图片，反推成适合 AIGC 生图使用的结构化双语 Prompt JSON。
 
-Mandatory quality rules:
-1. Use positive framing only. No negative constraints.
-2. Optimize for Imagen-style prompting with dense visual detail.
-3. Keep prompt_en in English. Keep prompt_zh as a faithful Chinese translation.
-4. reconstructed_prompt fields must be in English. reconstructed_prompt_zh fields must be in Chinese (corresponding translations of the English fields).
-5. If visible text exists, use: with the text "..." in a typography
-6. Embedded text must be 25 characters or fewer.
-7. aspect_ratio must be one of: 1:1, 3:4, 4:3, 9:16, 16:9
-8. contains_people must be boolean.
-9. No markdown, comments, code fences.
+工作规则：
+1. 直接分析输入图片。
+2. 只输出 raw JSON，不要输出 Markdown、解释、寒暄、代码块或额外说明。
+3. 所有结构化分析字段使用流畅中文；prompt_en 使用英文；prompt_zh 是 prompt_en 的忠实中文翻译。
+4. 只描述画面中可见或高度可信的视觉信息。不要编造品牌、型号、材质、场景故事或看不见的内容。
+5. 使用正向视觉描述，避免负面提示词和排除式表达。
+6. aspect_ratio 只能从以下值中选择最接近的一项：1:1、3:4、4:3、9:16、16:9。
+7. contains_people 必须是 JSON boolean：true 或 false。
+8. 如果图片中有可见文字，embedded_text 必须使用英文固定格式：with the text "..." in a typography，引号内文字不超过 25 个字符。如果没有可见文字，填空字符串 ""。
+9. prompt_en 应该是可直接用于生图的高质量英文提示词，包含主体、环境、光线、构图、材质、镜头、氛围和技术质感，长度不超过 480 words。
+10. prompt_zh 必须忠实翻译 prompt_en，不要额外扩写或删减。
+11. 输出前自检 JSON 是否有效、字段是否完整、数组和 boolean 类型是否正确。
 
-Output JSON:
-{"aspect_ratio":"","contains_people":true,"reconstructed_prompt":{"style_prefix":"","subject":"","context_and_background":"","lighting":"","camera_and_composition":"","embedded_text_syntax":""},"reconstructed_prompt_zh":{"style_prefix":"","subject":"","context_and_background":"","lighting":"","camera_and_composition":"","embedded_text_syntax":""},"quality_notes":[],"prompt_en":"","prompt_zh":""}
+输出 JSON 必须使用以下结构：
+{
+  "global_scene": {
+    "art_style": "",
+    "atmosphere": "",
+    "color_palette": [],
+    "lighting": ""
+  },
+  "composition": {
+    "camera_angle": "",
+    "focal_length": "",
+    "framing": "",
+    "depth_of_field": ""
+  },
+  "entities": [
+    {
+      "label": "",
+      "appearance": "",
+      "pose": {
+        "action_description": "",
+        "body_language": "",
+        "spatial_position": ""
+      },
+      "sub_elements": []
+    }
+  ],
+  "environment_details": {
+    "foreground": "",
+    "midground": "",
+    "background": ""
+  },
+  "technical_specs": {
+    "texture_fidelity": "",
+    "render_engine_style": "",
+    "vfx": []
+  },
+  "aspect_ratio": "1:1",
+  "contains_people": false,
+  "embedded_text": "",
+  "prompt_en": "",
+  "prompt_zh": ""
+}
+
+字段写法要求：
+- global_scene.art_style：画面媒介与风格，如商业摄影、电影感产品摄影、数字插画、3D 渲染、概念艺术等。
+- global_scene.atmosphere：整体情绪和氛围。
+- global_scene.color_palette：主要色彩和点缀色。
+- global_scene.lighting：光源方向、柔硬、强弱、色温、反射、阴影。
+- composition.camera_angle：视角，如平视、俯拍、低角度、近景、微距。
+- composition.focal_length：镜头感，如广角、标准镜头、人像长焦、微距、长焦压缩。
+- composition.framing：主体位置、裁切、对称、三分法、留白、视觉平衡。
+- composition.depth_of_field：景深、焦点、虚化、散景。
+- entities：列出画面中重要主体或物体，包含外观、材质、颜色、动作、位置和子元素。
+- environment_details：拆成前景、中景、背景。
+- technical_specs.texture_fidelity：材质细节，如织物纹理、金属反光、玻璃、皮肤、纸张、塑料等。
+- technical_specs.render_engine_style：摄影或渲染质感，如真实商业摄影、Octane 风格、Unreal 风格、水彩、矢量、胶片等。
+- technical_specs.vfx：视觉效果，如光晕、雾气、粒子、运动模糊、颗粒、镜头光斑、反射等。
 
 Return JSON only."#.to_string()
 }
@@ -245,8 +302,37 @@ fn parse_json_response(text: &str) -> Result<Value, Box<dyn std::error::Error + 
     Err("Failed to parse model response as JSON".into())
 }
 
+fn build_structured_prompt(result: &Value) -> Value {
+    if result.get("global_scene").is_some()
+        || result.get("composition").is_some()
+        || result.get("entities").is_some()
+        || result.get("environment_details").is_some()
+        || result.get("technical_specs").is_some()
+    {
+        serde_json::json!({
+            "global_scene": result.get("global_scene").cloned().unwrap_or_else(|| serde_json::json!({})),
+            "composition": result.get("composition").cloned().unwrap_or_else(|| serde_json::json!({})),
+            "entities": result.get("entities").cloned().unwrap_or_else(|| serde_json::json!([])),
+            "environment_details": result.get("environment_details").cloned().unwrap_or_else(|| serde_json::json!({})),
+            "technical_specs": result.get("technical_specs").cloned().unwrap_or_else(|| serde_json::json!({})),
+            "embedded_text": result.get("embedded_text").cloned().unwrap_or_else(|| serde_json::json!(""))
+        })
+    } else {
+        result.get("reconstructed_prompt").cloned().unwrap_or_else(|| serde_json::json!({}))
+    }
+}
+
+fn collect_json_text(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        Value::Array(items) => items.iter().map(collect_json_text).filter(|s| !s.is_empty()).collect::<Vec<_>>().join(", "),
+        Value::Object(map) => map.values().map(collect_json_text).filter(|s| !s.is_empty()).collect::<Vec<_>>().join(", "),
+        _ => String::new(),
+    }
+}
+
 fn compute_quality_from_json(result: &Value) -> (u32, String, Value, Vec<String>) {
-    let rp = &result["reconstructed_prompt"];
+    let structured = build_structured_prompt(result);
 
     let score_text = |text: &str, min_words: usize| -> u32 {
         let clean = text.trim();
@@ -259,12 +345,35 @@ fn compute_quality_from_json(result: &Value) -> (u32, String, Value, Vec<String>
         std::cmp::min(100, score)
     };
 
-    let subject = score_text(rp["subject"].as_str().unwrap_or(""), 12);
-    let context = score_text(rp["context_and_background"].as_str().unwrap_or(""), 14);
-    let lighting = score_text(rp["lighting"].as_str().unwrap_or(""), 10);
-    let camera = score_text(rp["camera_and_composition"].as_str().unwrap_or(""), 10);
+    let subject_text = if structured.get("entities").is_some() {
+        collect_json_text(&structured["entities"])
+    } else {
+        structured["subject"].as_str().unwrap_or("").to_string()
+    };
+    let context_text = if structured.get("environment_details").is_some() {
+        collect_json_text(&structured["environment_details"])
+    } else {
+        structured["context_and_background"].as_str().unwrap_or("").to_string()
+    };
+    let lighting_text = structured["global_scene"]["lighting"]
+        .as_str()
+        .unwrap_or_else(|| structured["lighting"].as_str().unwrap_or(""))
+        .to_string();
+    let camera_text = if structured.get("composition").is_some() {
+        collect_json_text(&structured["composition"])
+    } else {
+        structured["camera_and_composition"].as_str().unwrap_or("").to_string()
+    };
+
+    let subject = score_text(&subject_text, 12);
+    let context = score_text(&context_text, 14);
+    let lighting = score_text(&lighting_text, 10);
+    let camera = score_text(&camera_text, 10);
     let text_score: u32 = {
-        let et = rp["embedded_text_syntax"].as_str().unwrap_or("").trim();
+        let et = structured["embedded_text"]
+            .as_str()
+            .unwrap_or_else(|| structured["embedded_text_syntax"].as_str().unwrap_or(""))
+            .trim();
         if et.is_empty() { 92 } else if et.contains("with the text") { 100 } else { 50 }
     };
 
@@ -276,7 +385,7 @@ fn compute_quality_from_json(result: &Value) -> (u32, String, Value, Vec<String>
         if result["contains_people"].as_bool().is_some() { s += 10; }
         if !prompt_en.is_empty() { s += 20; }
         if word_count >= 30 && word_count <= 220 { s += 20; } else { s += 8; }
-        if rp["style_prefix"].as_str().unwrap_or("").len() > 5 { s += 15; }
+        if collect_json_text(&structured["global_scene"]).len() > 5 || structured["style_prefix"].as_str().unwrap_or("").len() > 5 { s += 15; }
         s += 10;
         std::cmp::min(100, s)
     };

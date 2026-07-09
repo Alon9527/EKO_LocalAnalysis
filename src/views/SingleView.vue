@@ -64,6 +64,8 @@ const promptText = computed({
 const structFields = computed(() => {
   const r: any = store.result;
   if (!r?.reconstructed_prompt) return [];
+  const nextFields = structuredFieldsFromPrompt(r.reconstructed_prompt);
+  if (nextFields.length) return nextFields;
   const useZh = currentLang.value === "zh" && r.reconstructed_prompt_zh;
   const rp = useZh ? r.reconstructed_prompt_zh : r.reconstructed_prompt;
   const labels = useZh
@@ -77,6 +79,40 @@ const structFields = computed(() => {
     { key: "camera_and_composition", label: labels.camera, value: rp.camera_and_composition, icon: Camera, color: "#22d3ee" },
   ].filter((f) => f.value);
 });
+
+function formatStructuredValue(value: any) {
+  if (Array.isArray(value)) {
+    if (!value.length) return "";
+    if (value.every((item) => typeof item === "string")) return value.join("、");
+    return JSON.stringify(value, null, 2);
+  }
+  if (value && typeof value === "object") return JSON.stringify(value, null, 2);
+  return value || "";
+}
+
+function structuredFieldsFromPrompt(rp: any) {
+  if (!rp?.global_scene && !rp?.composition && !rp?.entities && !rp?.environment_details && !rp?.technical_specs) {
+    return [];
+  }
+  return [
+    { key: "global_scene.art_style", label: "画面风格", value: rp.global_scene?.art_style, icon: EditPen, color: "#a78bfa" },
+    { key: "global_scene.atmosphere", label: "整体氛围", value: rp.global_scene?.atmosphere, icon: PicIcon, color: "#60a5fa" },
+    { key: "global_scene.color_palette", label: "色彩", value: formatStructuredValue(rp.global_scene?.color_palette), icon: PicIcon, color: "#34d399" },
+    { key: "global_scene.lighting", label: "光线", value: rp.global_scene?.lighting, icon: Sunny, color: "#fbbf24" },
+    { key: "composition.camera_angle", label: "视角", value: rp.composition?.camera_angle, icon: Camera, color: "#22d3ee" },
+    { key: "composition.focal_length", label: "镜头感", value: rp.composition?.focal_length, icon: Camera, color: "#22d3ee" },
+    { key: "composition.framing", label: "构图", value: rp.composition?.framing, icon: Camera, color: "#22d3ee" },
+    { key: "composition.depth_of_field", label: "景深", value: rp.composition?.depth_of_field, icon: Camera, color: "#22d3ee" },
+    { key: "entities", label: "主体与物体", value: formatStructuredValue(rp.entities), icon: User, color: "#60a5fa" },
+    { key: "environment_details.foreground", label: "前景", value: rp.environment_details?.foreground, icon: PicIcon, color: "#34d399" },
+    { key: "environment_details.midground", label: "中景", value: rp.environment_details?.midground, icon: PicIcon, color: "#34d399" },
+    { key: "environment_details.background", label: "背景", value: rp.environment_details?.background, icon: PicIcon, color: "#34d399" },
+    { key: "technical_specs.texture_fidelity", label: "材质细节", value: rp.technical_specs?.texture_fidelity, icon: Aim, color: "#2dd4bf" },
+    { key: "technical_specs.render_engine_style", label: "技术质感", value: rp.technical_specs?.render_engine_style, icon: Aim, color: "#2dd4bf" },
+    { key: "technical_specs.vfx", label: "视觉效果", value: formatStructuredValue(rp.technical_specs?.vfx), icon: Aim, color: "#2dd4bf" },
+    { key: "embedded_text", label: "画面文字", value: rp.embedded_text, icon: EditPen, color: "#a78bfa" },
+  ].filter((field) => field.value);
+}
 
 const qualityDimensions = computed(() => {
   if (!store.result?.qualityBreakdown) return [];
@@ -182,9 +218,45 @@ async function copyPrompt() {
 function updateStructField(key: string, value: string) {
   const r: any = store.result;
   if (!r?.reconstructed_prompt) return;
+  if (key.includes(".") || key === "entities" || key === "embedded_text") {
+    setStructuredValue(r.reconstructed_prompt, key, value);
+    return;
+  }
   const useZh = currentLang.value === "zh" && r.reconstructed_prompt_zh;
   const target = useZh ? r.reconstructed_prompt_zh : r.reconstructed_prompt;
   target[key] = value;
+}
+
+function setStructuredValue(target: any, key: string, value: string) {
+  const parsed = parseStructuredEdit(key, value);
+  if (!key.includes(".")) {
+    target[key] = parsed;
+    return;
+  }
+  const parts = key.split(".");
+  let cursor = target;
+  for (const part of parts.slice(0, -1)) {
+    if (!cursor[part] || typeof cursor[part] !== "object") cursor[part] = {};
+    cursor = cursor[part];
+  }
+  cursor[parts[parts.length - 1]] = parsed;
+}
+
+function parseStructuredEdit(key: string, value: string) {
+  const trimmed = value.trim();
+  if (key === "global_scene.color_palette" || key === "technical_specs.vfx") {
+    return trimmed ? trimmed.split(/[、,\n]/).map((item) => item.trim()).filter(Boolean) : [];
+  }
+  if (key === "entities") {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return trimmed
+        ? [{ label: "主体", appearance: trimmed, pose: { action_description: "", body_language: "", spatial_position: "" }, sub_elements: [] }]
+        : [];
+    }
+  }
+  return value;
 }
 </script>
 

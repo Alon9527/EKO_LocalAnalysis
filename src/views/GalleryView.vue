@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { computed, ref, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import { useGalleryStore } from "@/stores/gallery";
 import { api } from "@/lib/api";
 import RadarChart from "@/components/RadarChart.vue";
@@ -10,6 +11,7 @@ import {
 } from "@element-plus/icons-vue";
 
 const store = useGalleryStore();
+const route = useRoute();
 const viewMode = ref<"grid" | "list">("grid");
 const modelFilter = ref("");
 const dateFilter = ref("");
@@ -17,6 +19,7 @@ const scoreFilter = ref<number | "">("");
 const copiedField = ref("");
 const currentPage = ref(1);
 const pageSize = ref(24);
+const isExportPage = computed(() => route.path === "/export");
 
 onMounted(() => store.load());
 
@@ -37,10 +40,9 @@ function toggleFav() {
   store.load();
 }
 
-async function exportSelected() {
-  const ids = Array.from(store.selected);
+async function exportItems(ids: string[], defaultName = `autoprompt-export-${Date.now()}`) {
   if (!ids.length) return;
-  const outputPath = await api.saveFile(`autoprompt-export-${Date.now()}`, [
+  const outputPath = await api.saveFile(defaultName, [
     { name: "ZIP", extensions: ["zip"] },
     { name: "CSV", extensions: ["csv"] },
     { name: "JSON", extensions: ["json"] },
@@ -51,6 +53,20 @@ async function exportSelected() {
   const ext = outputPath.split(".").pop()?.toLowerCase() || "zip";
   const formatMap: Record<string, string> = { zip: "zip", csv: "csv", json: "json", md: "markdown", txt: "txt" };
   await api.exportItems(ids, formatMap[ext] || "zip", outputPath);
+  ElMessage.success(`已导出 ${ids.length} 条结果`);
+}
+
+async function exportSelected() {
+  await exportItems(Array.from(store.selected), `autoprompt-selected-${Date.now()}`);
+}
+
+async function exportAll() {
+  await exportItems(store.items.map((item) => item.id), `autoprompt-all-${Date.now()}`);
+}
+
+function toggleSelectAll() {
+  if (store.selectedCount === store.items.length) store.clearSelection();
+  else store.selectAll();
 }
 
 async function deleteSelected() {
@@ -150,6 +166,34 @@ const detailDimensions = (item: any) => {
 
       <div class="flex-1" />
 
+      <template v-if="isExportPage">
+        <el-button
+          size="large"
+          type="primary"
+          :disabled="!store.items.length"
+          @click="exportAll"
+        >
+          <el-icon class="mr-1"><Download /></el-icon>导出全部结果
+        </el-button>
+        <el-button
+          size="large"
+          type="primary"
+          plain
+          :disabled="!store.selectedCount"
+          @click="exportSelected"
+        >
+          <el-icon class="mr-1"><Download /></el-icon>导出选中 ({{ store.selectedCount }})
+        </el-button>
+        <el-button
+          size="large"
+          plain
+          :disabled="!store.items.length"
+          @click="toggleSelectAll"
+        >
+          <el-icon class="mr-1"><Check /></el-icon>{{ store.selectedCount === store.items.length ? '取消全选' : '全选' }}
+        </el-button>
+      </template>
+
       <el-button-group>
         <el-button size="large" :type="viewMode === 'grid' ? 'primary' : ''" @click="viewMode = 'grid'">
           <el-icon><Grid /></el-icon>
@@ -160,7 +204,7 @@ const detailDimensions = (item: any) => {
       </el-button-group>
 
       <el-button
-        v-if="store.selectedCount"
+        v-if="store.selectedCount && !isExportPage"
         size="large"
         type="primary"
         plain
@@ -169,7 +213,7 @@ const detailDimensions = (item: any) => {
         <el-icon class="mr-1"><Download /></el-icon>导出 ({{ store.selectedCount }})
       </el-button>
       <el-button
-        v-if="store.selectedCount"
+        v-if="store.selectedCount && !isExportPage"
         size="large"
         type="danger"
         plain
@@ -192,12 +236,26 @@ const detailDimensions = (item: any) => {
             shadow="hover"
             body-style="padding:0"
             class="!cursor-pointer transition-all"
-            :class="store.detailItem?.id === item.id ? '!border-teal-400/40' : ''"
-            @click="store.openDetail(item.id)"
+            :class="[
+              store.detailItem?.id === item.id ? '!border-teal-400/40' : '',
+              store.selected.has(item.id) ? '!border-teal-400/70 ring-2 ring-teal-400/25' : ''
+            ]"
+            @click="isExportPage ? store.toggleSelect(item.id) : store.openDetail(item.id)"
           >
             <div class="relative aspect-[4/3] bg-[#0a0a12] overflow-hidden rounded-t-2xl">
               <img v-if="item.thumbUrl" :src="item.thumbUrl" class="w-full h-full object-cover" alt="" loading="lazy" />
               <el-button
+                v-if="isExportPage"
+                circle
+                size="small"
+                class="!absolute !top-2 !left-2"
+                :type="store.selected.has(item.id) ? 'primary' : 'default'"
+                @click.stop="store.toggleSelect(item.id)"
+              >
+                <el-icon><Check /></el-icon>
+              </el-button>
+              <el-button
+                v-else
                 circle
                 size="small"
                 class="!absolute !top-2 !left-2"
