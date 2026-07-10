@@ -273,29 +273,29 @@ function parseStructuredEdit(key: string, value: string) {
 <template>
   <div class="h-full flex flex-col">
     <!-- Top: Queue Header + Strip -->
-    <div data-tauri-drag-region class="shrink-0 px-8 pt-7 pb-5 border-b border-white/[0.06]">
-      <div class="flex items-center justify-between mb-5">
+    <div data-tauri-drag-region class="shrink-0 px-6 pt-5 pb-4 border-b border-white/[0.06]">
+      <div class="flex items-center justify-between mb-4">
         <div data-tauri-drag-region class="flex items-center gap-3">
-          <h2 class="text-[22px] font-semibold text-white/90">分析队列</h2>
-          <el-tag v-if="queue.length" size="large" type="info">
+          <h2 class="text-[18px] font-semibold text-white/90">分析队列</h2>
+          <el-tag v-if="queue.length" size="default" type="info">
             {{ doneCount + failedCount }}/{{ queue.length }}
           </el-tag>
         </div>
-        <div class="flex gap-3">
-          <el-button size="large" @click="addFiles">
+        <div class="flex gap-2">
+          <el-button size="default" @click="addFiles">
             <el-icon class="mr-1.5"><Plus /></el-icon>添加图片
           </el-button>
-          <el-button size="large" @click="addFolder">
+          <el-button size="default" @click="addFolder">
             <el-icon class="mr-1.5"><FolderOpened /></el-icon>添加文件夹
           </el-button>
-          <el-button size="large" type="danger" plain :disabled="!queue.length || running" @click="clearQueue">
+          <el-button size="default" type="danger" plain :disabled="!queue.length || running" @click="clearQueue">
             <el-icon class="mr-1.5"><Close /></el-icon>清空
           </el-button>
-          <el-divider direction="vertical" style="height: 32px; margin: 0 4px;" />
+          <el-divider direction="vertical" style="height: 30px; margin: 0 3px;" />
           <el-button
             v-if="!running"
             type="primary"
-            size="large"
+            size="default"
             :disabled="!queue.length"
             @click="startBatch"
           >
@@ -304,26 +304,26 @@ function parseStructuredEdit(key: string, value: string) {
           <el-button
             v-if="running"
             :type="paused ? 'primary' : 'warning'"
-            size="large"
+            size="default"
             plain
             @click="togglePause"
           >
             <el-icon class="mr-1.5"><VideoPause v-if="!paused" /><VideoPlay v-else /></el-icon>
             {{ paused ? '继续' : '暂停' }}
           </el-button>
-          <el-button v-if="running" type="danger" size="large" plain @click="cancelBatch">
+          <el-button v-if="running" type="danger" size="default" plain @click="cancelBatch">
             <el-icon class="mr-1.5"><Close /></el-icon>取消
           </el-button>
         </div>
       </div>
 
       <!-- Horizontal thumbnails -->
-      <div v-if="queue.length" class="flex gap-3 overflow-x-auto pb-2">
+      <div v-if="queue.length" class="flex gap-2.5 overflow-x-auto pb-1">
         <div
           v-for="(item, idx) in queue"
           :key="item.id"
           @click="viewItem(item)"
-          class="relative shrink-0 w-[120px] h-[88px] rounded-xl overflow-hidden border-2 transition-all duration-300"
+          class="relative shrink-0 w-[108px] h-[78px] rounded-lg overflow-hidden border transition-all duration-200"
           :class="[
             currentItem?.id === item.id ? 'ring-2 ring-teal-400/60' : '',
             (item.status === 'done' || item.status === 'failed') ? 'cursor-pointer hover:scale-[1.03]' : '',
@@ -365,11 +365,11 @@ function parseStructuredEdit(key: string, value: string) {
     </div>
 
     <!-- Middle: Current analysis -->
-    <div class="flex-1 min-h-0 flex gap-6 p-7">
+    <div class="flex-1 min-h-0 flex gap-5 p-5">
       <!-- Left: Current image -->
       <div class="w-[48%] flex flex-col">
-        <h3 class="text-[18px] font-semibold text-white/85 mb-4">当前分析图像</h3>
-        <el-card class="flex-1" body-style="height:100%;padding:14px">
+        <h3 class="text-[15px] font-semibold text-white/78 mb-3">当前分析图像</h3>
+        <el-card class="flex-1" body-style="height:100%;padding:10px">
           <div class="relative h-full rounded-xl overflow-hidden bg-[#0a0a12]">
             <img
               v-if="currentItem?.thumbUrl"
@@ -401,9 +401,9 @@ function parseStructuredEdit(key: string, value: string) {
 
       <!-- Right: Real-time results -->
       <div class="flex-1 flex flex-col min-w-0">
-        <h3 class="text-[18px] font-semibold text-white/85 mb-4">实时分析结果</h3>
-        <el-card class="flex-1" body-style="height:100%;padding:24px;overflow-y:auto">
-          <div v-if="currentItem?.result" class="space-y-8">
+        <h3 class="text-[15px] font-semibold text-white/78 mb-3">实时分析结果</h3>
+        <el-card class="flex-1" body-style="height:100%;padding:16px;overflow-y:auto">
+          <div v-if="currentItem?.result" class="space-y-6">
             <!-- Top: lang toggle + copy -->
             <div class="flex items-center justify-between">
               <el-radio-group v-model="currentLang" size="default">
@@ -429,12 +429,12 @@ function parseStructuredEdit(key: string, value: string) {
 
             <!-- Structured fields (bottom) -->
             <template v-if="structFieldsForCurrent.length">
-              <div class="pt-6 border-t border-white/[0.08]">
-                <p class="text-[14px] font-semibold text-white/80 mb-6">结构化拆解</p>
-                <div class="space-y-7">
-                  <div v-for="field in structFieldsForCurrent" :key="field.key" class="flex items-start gap-4">
-                    <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" :style="{ backgroundColor: field.color + '22' }">
-                      <el-icon :size="20" :color="field.color"><component :is="field.icon" /></el-icon>
+              <div class="pt-5 border-t border-white/[0.08]">
+                <p class="text-[14px] font-semibold text-white/80 mb-4">结构化拆解</p>
+                <div class="space-y-4">
+                  <div v-for="field in structFieldsForCurrent" :key="field.key" class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" :style="{ backgroundColor: field.color + '22' }">
+                      <el-icon :size="18" :color="field.color"><component :is="field.icon" /></el-icon>
                     </div>
                     <div class="flex-1 min-w-0 pt-1">
                       <p class="text-[13px] font-semibold text-white/55 mb-2">{{ field.label }}</p>
@@ -445,7 +445,7 @@ function parseStructuredEdit(key: string, value: string) {
                         @input="updateStructFieldForCurrent(field.key, ($event.target as HTMLTextAreaElement).value)"
                       />
                     </div>
-                    <el-icon :size="20" color="#34d399" class="shrink-0 mt-2"><Check /></el-icon>
+                    <el-icon :size="18" color="#34d399" class="shrink-0 mt-2"><Check /></el-icon>
                   </div>
                 </div>
               </div>
@@ -471,7 +471,7 @@ function parseStructuredEdit(key: string, value: string) {
     </div>
 
     <!-- Bottom: Progress only -->
-    <div class="shrink-0 px-8 py-3 border-t border-white/[0.06]">
+    <div class="shrink-0 px-6 py-3 border-t border-white/[0.06] bg-black/10">
       <div class="flex items-center gap-5 mb-2">
         <span class="text-[14px] text-white/65">
           已完成 <strong class="text-white/90">{{ doneCount + failedCount }}/{{ queue.length }}</strong>
@@ -491,9 +491,10 @@ function parseStructuredEdit(key: string, value: string) {
 
 <style scoped>
 :deep(.el-card) {
-  background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background-color: rgba(14, 17, 23, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  box-shadow: none;
 }
 :deep(.el-empty__description) {
   font-size: 14px;
@@ -501,16 +502,17 @@ function parseStructuredEdit(key: string, value: string) {
 }
 .prompt-editor {
   width: 100%;
-  min-height: 220px;
+  min-height: 190px;
   resize: vertical;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.055);
   padding: 14px 16px;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.84);
   font-size: 14px;
   line-height: 1.85;
   outline: none;
+  user-select: text;
 }
 .prompt-editor:focus {
   border-color: rgba(45, 212, 191, 0.45);
@@ -518,16 +520,17 @@ function parseStructuredEdit(key: string, value: string) {
 }
 .struct-editor {
   width: 100%;
-  min-height: 88px;
+  min-height: 76px;
   resize: vertical;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.05);
   padding: 10px 12px;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 15px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 14px;
   line-height: 1.75;
   outline: none;
+  user-select: text;
 }
 .struct-editor:focus {
   border-color: rgba(45, 212, 191, 0.42);

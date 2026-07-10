@@ -11,7 +11,7 @@ const navItems = [
   { path: "/single", label: "单图分析", icon: Picture },
   { path: "/batch", label: "批量分析", icon: Files },
   { path: "/gallery", label: "历史记录", icon: Clock },
-  { path: "/export", label: "导出结果", icon: Download },
+  { path: "/export", label: "结果管理", icon: Download },
   { path: "/settings", label: "设置中心", icon: Setting },
 ];
 
@@ -25,11 +25,11 @@ function openUpdate() {
 </script>
 
 <template>
-  <aside class="w-[260px] shrink-0 flex flex-col select-none">
+  <aside class="w-[232px] shrink-0 flex flex-col select-none">
     <!-- Logo -->
-    <div data-tauri-drag-region class="flex items-center gap-3 px-5 h-20 shrink-0">
-      <div class="w-12 h-12 rounded-xl bg-black border border-white/15 flex items-center justify-center shrink-0 shadow-lg">
-        <svg width="34" height="14" viewBox="0 0 34 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div data-tauri-drag-region class="flex items-center gap-3 px-4 h-[72px] shrink-0">
+      <div class="w-11 h-11 rounded-xl bg-black border border-white/12 flex items-center justify-center shrink-0 shadow-sm">
+        <svg width="32" height="13" viewBox="0 0 34 14" fill="none" xmlns="http://www.w3.org/2000/svg">
           <!-- E -->
           <path d="M0 0h9v2.4H2.4v3h5.4V7.8H2.4v3.8H9V14H0V0z" fill="white" />
           <!-- K -->
@@ -38,7 +38,7 @@ function openUpdate() {
           <path d="M26 0h7a1 1 0 011 1v12a1 1 0 01-1 1h-7a1 1 0 01-1-1V1a1 1 0 011-1zm.4 2.4v9.2h6.2V2.4h-6.2z" fill="white" />
         </svg>
       </div>
-      <span class="text-[17px] font-semibold text-white/95 tracking-wide">图片反推工具</span>
+      <span class="text-[16px] font-semibold text-white/92 tracking-wide">图片反推工具</span>
     </div>
 
     <!-- Menu -->
@@ -78,23 +78,23 @@ function openUpdate() {
 <style>
 .app-sidebar-menu.el-menu {
   border-right: none !important;
-  padding: 12px 16px;
+  padding: 8px 12px;
 }
 .app-sidebar-menu .el-menu-item {
-  height: 56px !important;
-  line-height: 56px !important;
-  border-radius: 14px !important;
-  margin-bottom: 6px;
-  font-size: 16px !important;
+  height: 48px !important;
+  line-height: 48px !important;
+  border-radius: 12px !important;
+  margin-bottom: 4px;
+  font-size: 14px !important;
   font-weight: 500 !important;
-  padding: 0 18px !important;
+  padding: 0 14px !important;
 }
 .app-sidebar-menu .el-menu-item:hover {
   background-color: rgba(255, 255, 255, 0.05) !important;
   color: rgba(255, 255, 255, 0.9) !important;
 }
 .app-sidebar-menu .el-menu-item.is-active {
-  background-color: rgba(45, 212, 191, 0.13) !important;
+  background-color: rgba(45, 212, 191, 0.11) !important;
   position: relative;
 }
 .app-sidebar-menu .el-menu-item.is-active::before {
@@ -104,25 +104,25 @@ function openUpdate() {
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
-  height: 22px;
+  height: 20px;
   border-radius: 2px;
   background: #2dd4bf;
-  box-shadow: 0 0 12px rgba(45, 212, 191, 0.7);
+  box-shadow: 0 0 10px rgba(45, 212, 191, 0.42);
 }
 .app-sidebar-menu .el-menu-item .el-icon {
-  margin-right: 14px !important;
-  width: 22px;
-  font-size: 22px !important;
+  margin-right: 12px !important;
+  width: 20px;
+  font-size: 20px !important;
 }
 .update-notice {
   display: flex;
   width: 100%;
   align-items: center;
   gap: 10px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(45, 212, 191, 0.32);
   background: rgba(45, 212, 191, 0.13);
-  padding: 11px 12px;
+  padding: 10px;
   color: rgba(255, 255, 255, 0.92);
   cursor: pointer;
   transition: all 180ms ease;
@@ -134,12 +134,12 @@ function openUpdate() {
 }
 .update-notice__icon {
   display: inline-flex;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 9px;
   background: rgba(45, 212, 191, 0.18);
   color: #2dd4bf;
 }

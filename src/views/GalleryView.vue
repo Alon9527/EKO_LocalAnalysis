@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import RadarChart from "@/components/RadarChart.vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
-  Search, Star, StarFilled, Download, Delete, Close, CopyDocument, Check,
+  Search, Star, StarFilled, Download, Delete, Close, CopyDocument, Check, Upload,
   Grid, List, RefreshLeft, Picture as PicIcon
 } from "@element-plus/icons-vue";
 
@@ -19,6 +19,7 @@ const scoreFilter = ref<number | "">("");
 const copiedField = ref("");
 const currentPage = ref(1);
 const pageSize = ref(24);
+const importing = ref(false);
 const isExportPage = computed(() => route.path === "/export");
 
 onMounted(() => store.load());
@@ -61,7 +62,24 @@ async function exportSelected() {
 }
 
 async function exportAll() {
-  await exportItems(store.items.map((item) => item.id), `autoprompt-all-${Date.now()}`);
+  const data = await api.getHistory({ pageSize: 9999, page: 1 });
+  await exportItems(data.items.map((item) => item.id), `autoprompt-all-${Date.now()}`);
+}
+
+async function importResults() {
+  const inputPath = await api.openImportFile();
+  if (!inputPath) return;
+
+  importing.value = true;
+  try {
+    const summary = await api.importItems(inputPath);
+    await store.load();
+    const renamedText = summary.renamed ? `，重命名 ${summary.renamed} 条重复记录` : "";
+    const skippedText = summary.skipped ? `，跳过 ${summary.skipped} 条空记录` : "";
+    ElMessage.success(`已导入 ${summary.imported} 条结果${renamedText}${skippedText}`);
+  } finally {
+    importing.value = false;
+  }
 }
 
 function toggleSelectAll() {
@@ -126,36 +144,36 @@ const detailDimensions = (item: any) => {
 <template>
   <div class="h-full flex flex-col">
     <!-- Toolbar -->
-    <div data-tauri-drag-region class="shrink-0 px-8 pt-7 pb-5 flex items-center gap-4 flex-wrap border-b border-white/[0.06]">
+    <div data-tauri-drag-region class="shrink-0 px-6 pt-5 pb-4 flex items-center gap-3 flex-wrap border-b border-white/[0.06]">
       <el-input
         :model-value="store.keyword"
-        size="large"
+        size="default"
         placeholder="搜索提示词关键词..."
         :prefix-icon="Search"
         clearable
-        class="!w-[360px]"
+        class="!w-[320px]"
         @input="onSearch"
       />
 
-      <el-select v-model="modelFilter" size="large" placeholder="全部模型" clearable class="!w-[160px]">
+      <el-select v-model="modelFilter" size="default" placeholder="全部模型" clearable class="!w-[150px]">
         <el-option label="GPT-4o Vision" value="gpt-4o" />
         <el-option label="Gemini" value="gemini" />
       </el-select>
 
-      <el-select v-model="scoreFilter" size="large" placeholder="评分范围" clearable class="!w-[160px]" @change="onScoreFilter">
+      <el-select v-model="scoreFilter" size="default" placeholder="评分范围" clearable class="!w-[150px]" @change="onScoreFilter">
         <el-option label="90+ 优秀" :value="90" />
         <el-option label="78+ 较强" :value="78" />
         <el-option label="64+ 可用" :value="64" />
       </el-select>
 
-      <el-select v-model="dateFilter" size="large" placeholder="日期" clearable class="!w-[140px]">
+      <el-select v-model="dateFilter" size="default" placeholder="日期" clearable class="!w-[130px]">
         <el-option label="今天" value="today" />
         <el-option label="本周" value="week" />
         <el-option label="本月" value="month" />
       </el-select>
 
       <el-button
-        size="large"
+        size="default"
         :type="store.favOnly ? 'warning' : ''"
         :plain="!store.favOnly"
         @click="toggleFav"
@@ -168,7 +186,15 @@ const detailDimensions = (item: any) => {
 
       <template v-if="isExportPage">
         <el-button
-          size="large"
+          size="default"
+          plain
+          :loading="importing"
+          @click="importResults"
+        >
+          <el-icon class="mr-1"><Upload /></el-icon>导入结果
+        </el-button>
+        <el-button
+          size="default"
           type="primary"
           :disabled="!store.items.length"
           @click="exportAll"
@@ -176,7 +202,7 @@ const detailDimensions = (item: any) => {
           <el-icon class="mr-1"><Download /></el-icon>导出全部结果
         </el-button>
         <el-button
-          size="large"
+          size="default"
           type="primary"
           plain
           :disabled="!store.selectedCount"
@@ -185,7 +211,7 @@ const detailDimensions = (item: any) => {
           <el-icon class="mr-1"><Download /></el-icon>导出选中 ({{ store.selectedCount }})
         </el-button>
         <el-button
-          size="large"
+          size="default"
           plain
           :disabled="!store.items.length"
           @click="toggleSelectAll"
@@ -195,17 +221,17 @@ const detailDimensions = (item: any) => {
       </template>
 
       <el-button-group>
-        <el-button size="large" :type="viewMode === 'grid' ? 'primary' : ''" @click="viewMode = 'grid'">
+        <el-button size="default" :type="viewMode === 'grid' ? 'primary' : ''" @click="viewMode = 'grid'">
           <el-icon><Grid /></el-icon>
         </el-button>
-        <el-button size="large" :type="viewMode === 'list' ? 'primary' : ''" @click="viewMode = 'list'">
+        <el-button size="default" :type="viewMode === 'list' ? 'primary' : ''" @click="viewMode = 'list'">
           <el-icon><List /></el-icon>
         </el-button>
       </el-button-group>
 
       <el-button
         v-if="store.selectedCount && !isExportPage"
-        size="large"
+        size="default"
         type="primary"
         plain
         @click="exportSelected"
@@ -214,7 +240,7 @@ const detailDimensions = (item: any) => {
       </el-button>
       <el-button
         v-if="store.selectedCount && !isExportPage"
-        size="large"
+        size="default"
         type="danger"
         plain
         @click="deleteSelected"
@@ -226,23 +252,23 @@ const detailDimensions = (item: any) => {
     <!-- Content -->
     <div class="flex-1 min-h-0 flex">
       <!-- Grid area -->
-      <div class="flex-1 overflow-y-auto p-7">
+      <div class="flex-1 overflow-y-auto p-5">
         <el-empty v-if="!store.items.length" description="暂无历史记录" :image-size="100" />
 
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3.5">
           <el-card
             v-for="item in store.items"
             :key="item.id"
             shadow="hover"
             body-style="padding:0"
-            class="!cursor-pointer transition-all"
+            class="!cursor-pointer transition-all duration-200"
             :class="[
               store.detailItem?.id === item.id ? '!border-teal-400/40' : '',
               store.selected.has(item.id) ? '!border-teal-400/70 ring-2 ring-teal-400/25' : ''
             ]"
             @click="isExportPage ? store.toggleSelect(item.id) : store.openDetail(item.id)"
           >
-            <div class="relative aspect-[4/3] bg-[#0a0a12] overflow-hidden rounded-t-2xl">
+            <div class="relative aspect-[4/3] bg-[#0a0a12] overflow-hidden rounded-t-xl">
               <img v-if="item.thumbUrl" :src="item.thumbUrl" class="w-full h-full object-cover" alt="" loading="lazy" />
               <el-button
                 v-if="isExportPage"
@@ -273,7 +299,7 @@ const detailDimensions = (item: any) => {
                 {{ item.qualityScore }}
               </el-tag>
             </div>
-            <div class="p-3">
+            <div class="p-2.5">
               <p class="text-[13px] text-white/65 truncate">{{ (item.prompt_zh || item.prompt_en || item.fileName || '').slice(0, 50) }}</p>
               <p class="text-[11px] text-white/35 mt-1">{{ item.createdAt || '' }} · {{ item.model || 'GPT-4o' }}</p>
             </div>
@@ -286,10 +312,10 @@ const detailDimensions = (item: any) => {
         v-model="store.detailItem"
         :show-close="false"
         :with-header="false"
-        size="420px"
+        size="520px"
         :before-close="store.closeDetail"
       >
-        <div v-if="store.detailItem" class="h-full flex flex-col p-5 overflow-y-auto">
+        <div v-if="store.detailItem" class="h-full flex flex-col p-5 overflow-y-auto select-text">
           <div class="flex items-start justify-between mb-4">
             <div>
               <h3 class="text-[18px] font-semibold text-white/90 mb-1">{{ store.detailItem.fileName || '分析结果' }}</h3>
@@ -363,7 +389,7 @@ const detailDimensions = (item: any) => {
             />
           </div>
 
-          <div class="flex gap-2 mt-auto">
+          <div class="flex gap-2 mt-auto pt-2">
             <el-button size="default">
               <el-icon class="mr-1"><RefreshLeft /></el-icon>重新分析
             </el-button>
@@ -395,15 +421,16 @@ const detailDimensions = (item: any) => {
 
 <style scoped>
 :deep(.el-card) {
-  background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background-color: rgba(14, 17, 23, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  box-shadow: none;
 }
 :deep(.el-card:hover) {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(45, 212, 191, 0.28);
 }
 :deep(.el-drawer) {
-  background-color: #12121a;
+  background-color: #10131a;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
 :deep(.el-drawer__body) {
@@ -411,15 +438,15 @@ const detailDimensions = (item: any) => {
 }
 .prompt-copy-field {
   width: 100%;
-  min-height: 170px;
+  min-height: 160px;
   resize: vertical;
-  border-radius: 14px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.055);
   padding: 14px;
-  color: rgba(255, 255, 255, 0.68);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.75;
   outline: none;
   user-select: text;
 }

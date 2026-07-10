@@ -1,8 +1,7 @@
-use crate::storage;
+use crate::{importer, storage};
 use serde_json::Value;
 use std::fs;
 use std::io::Write;
-use std::path::Path;
 
 pub fn export_items(ids: &[String], format: &str, output_path: &str) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let query = storage::HistoryQuery {
@@ -17,7 +16,11 @@ pub fn export_items(ids: &[String], format: &str, output_path: &str) -> Result<V
     let all_items: Vec<storage::HistoryItem> = serde_json::from_value(all_data["items"].clone()).unwrap_or_default();
 
     let id_set: std::collections::HashSet<&str> = ids.iter().map(|s| s.as_str()).collect();
-    let items: Vec<&storage::HistoryItem> = all_items.iter().filter(|i| id_set.contains(i.id.as_str())).collect();
+    let items: Vec<storage::HistoryItem> = all_items
+        .iter()
+        .filter(|i| id_set.contains(i.id.as_str()))
+        .map(importer::sanitize_for_export)
+        .collect();
 
     if items.is_empty() {
         return Err("No items found for export".into());
@@ -39,13 +42,13 @@ pub fn export_items(ids: &[String], format: &str, output_path: &str) -> Result<V
     }))
 }
 
-fn export_json(items: &[&storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn export_json(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let json = serde_json::to_string_pretty(items)?;
     fs::write(path, json)?;
     Ok(())
 }
 
-fn export_csv(items: &[&storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn export_csv(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut wtr = csv::Writer::from_path(path)?;
     wtr.write_record(["ID", "File Name", "Source", "Quality Score", "Quality Label", "Prompt EN", "Prompt ZH", "Aspect Ratio", "Model", "Provider", "Elapsed (ms)", "Created At"])?;
 
@@ -69,7 +72,7 @@ fn export_csv(items: &[&storage::HistoryItem], path: &str) -> Result<(), Box<dyn
     Ok(())
 }
 
-fn export_markdown(items: &[&storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn export_markdown(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut out = String::new();
     out.push_str("# AutoPrompt Export\n\n");
 
@@ -107,7 +110,7 @@ fn export_markdown(items: &[&storage::HistoryItem], path: &str) -> Result<(), Bo
     Ok(())
 }
 
-fn export_txt(items: &[&storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn export_txt(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut out = String::new();
 
     for (i, item) in items.iter().enumerate() {
@@ -128,7 +131,7 @@ fn export_txt(items: &[&storage::HistoryItem], path: &str) -> Result<(), Box<dyn
     Ok(())
 }
 
-fn export_zip(items: &[&storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn export_zip(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let file = fs::File::create(path)?;
     let mut zip = zip::ZipWriter::new(file);
     let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
@@ -142,13 +145,7 @@ fn export_zip(items: &[&storage::HistoryItem], path: &str) -> Result<(), Box<dyn
         let thumb_path = thumbs.join(format!("{}.jpg", item.id));
         if thumb_path.exists() {
             if let Ok(data) = fs::read(&thumb_path) {
-                let fname = if item.file_name.is_empty() {
-                    format!("{}.jpg", item.id)
-                } else {
-                    let stem = Path::new(&item.file_name).file_stem().and_then(|s| s.to_str()).unwrap_or(&item.id);
-                    format!("{}.jpg", stem)
-                };
-                zip.start_file(format!("thumbnails/{}", fname), options)?;
+                zip.start_file(format!("thumbnails/{}.jpg", item.id), options)?;
                 zip.write_all(&data)?;
             }
         }

@@ -151,6 +151,23 @@ fn write_history(items: &[HistoryItem]) -> Result<(), Box<dyn std::error::Error 
     Ok(())
 }
 
+pub fn list_history_items() -> Vec<HistoryItem> {
+    read_history()
+}
+
+pub fn replace_history_items(items: &[HistoryItem]) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    write_history(items)
+}
+
+pub fn thumbnail_path(id: &str) -> PathBuf {
+    thumbs_dir().join(format!("{}.jpg", id))
+}
+
+pub fn write_thumbnail(id: &str, data: &[u8]) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    fs::write(thumbnail_path(id), data)?;
+    Ok(())
+}
+
 pub fn get_history(query: HistoryQuery) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
     let mut items = read_history();
 
@@ -195,7 +212,7 @@ pub fn delete_history_items(ids: &[String]) -> Result<(), Box<dyn std::error::Er
     let filtered: Vec<_> = all.into_iter().filter(|i| !id_set.contains(i.id.as_str())).collect();
     write_history(&filtered)?;
     for id in ids {
-        let thumb = thumbs_dir().join(format!("{}.jpg", id));
+        let thumb = thumbnail_path(id);
         let _ = fs::remove_file(thumb);
     }
     Ok(())

@@ -53,6 +53,13 @@ export interface HistoryQuery {
   page?: number;
 }
 
+export interface ImportSummary {
+  imported: number;
+  renamed: number;
+  skipped: number;
+  total: number;
+}
+
 const isTauri = typeof window !== "undefined" && !!(window as any).__TAURI_INTERNALS__;
 
 const DEFAULT_SETTINGS: Settings = {
@@ -146,6 +153,11 @@ export const api = {
     return invokeTauri<{ path: string; count: number }>("export_items", { ids, format, outputPath });
   },
 
+  async importItems(inputPath: string): Promise<ImportSummary> {
+    if (!isTauri) browserUnsupported("导入结果");
+    return invokeTauri<ImportSummary>("import_items", { inputPath });
+  },
+
   async readFileAsDataUrl(filePath: string): Promise<string> {
     if (!isTauri) browserUnsupported("读取本地文件");
     return invokeTauri("read_file_as_data_url", { filePath });
@@ -177,6 +189,17 @@ export const api = {
     if (!isTauri) browserUnsupported("打开文件夹对话框");
     const { open } = await import("@tauri-apps/plugin-dialog");
     const result = await open({ directory: true });
+    if (!result) return null;
+    return result as string;
+  },
+
+  async openImportFile(): Promise<string | null> {
+    if (!isTauri) browserUnsupported("打开导入文件");
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const result = await open({
+      multiple: false,
+      filters: [{ name: "AutoPrompt 结果", extensions: ["zip", "json"] }],
+    });
     if (!result) return null;
     return result as string;
   },

@@ -263,9 +263,9 @@ function parseStructuredEdit(key: string, value: string) {
 <template>
   <div class="h-full flex flex-col">
     <!-- Top bar: input mode selector (only when no result) -->
-    <div v-if="!store.result && !store.analyzing" data-tauri-drag-region class="px-10 pt-8 pb-6 flex items-center gap-6">
-      <span class="text-[17px] font-semibold text-white/70">选择输入方式</span>
-      <el-radio-group v-model="inputMode" size="large">
+    <div v-if="!store.result && !store.analyzing" data-tauri-drag-region class="px-8 pt-6 pb-5 flex items-center gap-5">
+      <span class="text-[15px] font-semibold text-white/72">选择输入方式</span>
+      <el-radio-group v-model="inputMode" size="default">
         <el-radio-button value="file">
           <el-icon class="mr-2"><ElUploadIcon /></el-icon>本地上传
         </el-radio-button>
@@ -279,57 +279,57 @@ function parseStructuredEdit(key: string, value: string) {
     </div>
 
     <!-- URL Input bar -->
-    <div v-if="!store.result && !store.analyzing && inputMode === 'url'" class="px-10 pb-4 flex gap-3">
+    <div v-if="!store.result && !store.analyzing && inputMode === 'url'" class="px-8 pb-4 flex gap-3">
       <el-input
         v-model="urlValue"
-        size="large"
+        size="default"
         placeholder="https://example.com/image.jpg"
         :prefix-icon="Link"
         @keydown.enter="handleUrl"
         class="flex-1"
       />
-      <el-button type="primary" size="large" @click="handleUrl">
+      <el-button type="primary" size="default" @click="handleUrl">
         <el-icon class="mr-1"><Star /></el-icon>开始分析
       </el-button>
     </div>
 
     <!-- Upload Area (file) -->
-    <div v-if="!store.result && !store.analyzing && inputMode === 'file'" class="flex-1 px-10 pb-10 min-h-0 flex items-center justify-center">
+    <div v-if="!store.result && !store.analyzing && inputMode === 'file'" class="flex-1 px-8 pb-8 min-h-0 flex items-center justify-center">
       <div
         @click="handleFileClick"
         @dragover.prevent="dragOver = true"
         @dragenter.prevent="dragOver = true"
         @dragleave="handleDragLeave"
         @drop.prevent="handleDrop"
-        class="w-full max-w-[1100px] h-[520px] flex flex-col items-center justify-center border-2 border-dashed rounded-[28px] cursor-pointer transition-all duration-300 bg-gradient-to-b from-white/[0.03] to-white/[0.01]"
+        class="w-full max-w-[1040px] h-[460px] flex flex-col items-center justify-center border border-dashed rounded-[22px] cursor-pointer transition-all duration-300 bg-[#10131a]/60"
         :class="dragOver
           ? 'border-teal-400/55 bg-teal-400/[0.05]'
           : 'border-white/[0.2] hover:border-teal-400/45 hover:bg-white/[0.035]'"
       >
-        <div class="w-[120px] h-[120px] rounded-[28px] bg-gradient-to-br from-teal-500/22 to-blue-500/14 border border-white/[0.12] flex items-center justify-center mb-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_12px_36px_rgba(45,212,191,0.18)]">
-          <el-icon :size="56" color="#5eead4"><ElUploadIcon /></el-icon>
+        <div class="w-[88px] h-[88px] rounded-[22px] bg-teal-500/12 border border-teal-300/18 flex items-center justify-center mb-6">
+          <el-icon :size="44" color="#5eead4"><ElUploadIcon /></el-icon>
         </div>
-        <p class="text-[26px] font-semibold text-white/90 mb-3">拖拽图片到此处</p>
-        <p class="text-[16px] text-white/40 mb-5">或</p>
-        <el-button type="primary" plain size="large">
+        <p class="text-[22px] font-semibold text-white/90 mb-2">拖拽图片到此处</p>
+        <p class="text-[14px] text-white/45 mb-4">或</p>
+        <el-button type="primary" plain size="default">
           <el-icon class="mr-1.5"><ElUploadIcon /></el-icon>点击选择文件
         </el-button>
-        <p class="text-[14px] text-white/40 mt-6">支持 JPG、PNG、WebP 格式，最大 20MB</p>
+        <p class="text-[13px] text-white/45 mt-5">支持 JPG、PNG、WebP 格式，最大 20MB</p>
       </div>
     </div>
 
     <!-- Paste Zone -->
-    <div v-if="!store.result && !store.analyzing && inputMode === 'clipboard'" class="flex-1 px-10 pb-10 min-h-0 flex items-center justify-center">
+    <div v-if="!store.result && !store.analyzing && inputMode === 'clipboard'" class="flex-1 px-8 pb-8 min-h-0 flex items-center justify-center">
       <div
         @paste="handlePaste"
         tabindex="0"
-        class="w-full max-w-[1100px] h-[520px] flex flex-col items-center justify-center border-2 border-dashed border-white/[0.2] rounded-[28px] cursor-pointer outline-none focus:border-blue-400/45 focus:bg-blue-400/[0.04] transition-all duration-300 bg-gradient-to-b from-white/[0.03] to-white/[0.01]"
+        class="w-full max-w-[1040px] h-[460px] flex flex-col items-center justify-center border border-dashed border-white/[0.18] rounded-[22px] cursor-pointer outline-none focus:border-blue-400/45 focus:bg-blue-400/[0.04] transition-all duration-300 bg-[#10131a]/60"
       >
-        <div class="w-[120px] h-[120px] rounded-[28px] bg-gradient-to-br from-blue-500/22 to-violet-500/14 border border-white/[0.12] flex items-center justify-center mb-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_12px_36px_rgba(59,130,246,0.18)]">
-          <el-icon :size="56" color="#93c5fd"><Document /></el-icon>
+        <div class="w-[88px] h-[88px] rounded-[22px] bg-blue-500/12 border border-blue-300/18 flex items-center justify-center mb-6">
+          <el-icon :size="44" color="#93c5fd"><Document /></el-icon>
         </div>
-        <p class="text-[26px] font-semibold text-white/90 mb-3">按 Ctrl+V 粘贴截图</p>
-        <p class="text-[15px] text-white/45">点击此区域后粘贴剪贴板中的图片</p>
+        <p class="text-[22px] font-semibold text-white/90 mb-2">按 Ctrl+V 粘贴截图</p>
+        <p class="text-[14px] text-white/48">点击此区域后粘贴剪贴板中的图片</p>
       </div>
     </div>
 
@@ -374,10 +374,10 @@ function parseStructuredEdit(key: string, value: string) {
     </div>
 
     <!-- Result View -->
-    <div v-if="store.result" class="flex-1 min-h-0 flex gap-6 px-8 py-6">
+    <div v-if="store.result" class="flex-1 min-h-0 flex gap-5 px-6 py-5">
       <!-- Left: Image Preview -->
-      <div class="w-[40%] shrink-0">
-        <el-card class="!h-full" body-style="height:100%;padding:12px">
+      <div class="w-[38%] shrink-0">
+        <el-card class="!h-full" body-style="height:100%;padding:10px">
           <div class="relative h-full rounded-xl overflow-hidden bg-[#0a0a12]">
             <img
               v-if="store.previewSrc"
@@ -398,7 +398,7 @@ function parseStructuredEdit(key: string, value: string) {
       </div>
 
       <!-- Right: Results -->
-      <div class="flex-1 min-w-0 overflow-y-auto space-y-4 pr-1">
+      <div class="flex-1 min-w-0 overflow-y-auto space-y-3 pr-1">
         <!-- 1. Quality Score -->
         <el-card>
           <template #header>
@@ -410,7 +410,7 @@ function parseStructuredEdit(key: string, value: string) {
           <div class="flex gap-5">
             <div class="flex-1 min-w-0">
               <div class="flex items-end gap-3 mb-1">
-                <span class="text-[56px] font-bold text-teal-300 leading-none">{{ store.result.qualityScore }}</span>
+                <span class="text-[48px] font-bold text-teal-300 leading-none">{{ store.result.qualityScore }}</span>
                 <span class="text-[15px] font-semibold text-teal-300/75 pb-1.5">{{ store.result.qualityLabel }}</span>
               </div>
               <p class="text-[12px] text-white/40 mb-4">{{ qualityDescription }}</p>
@@ -505,17 +505,17 @@ function parseStructuredEdit(key: string, value: string) {
     </div>
 
     <!-- Bottom Action Bar -->
-    <div v-if="store.result" class="shrink-0 px-8 py-3 border-t border-white/[0.06] flex items-center justify-end gap-3">
-      <el-button size="large" @click="store.reset()">
+    <div v-if="store.result" class="shrink-0 px-6 py-3 border-t border-white/[0.06] flex items-center justify-end gap-2.5 bg-black/10">
+      <el-button size="default" @click="store.reset()">
         <el-icon class="mr-1"><RefreshLeft /></el-icon>重新分析
       </el-button>
-      <el-button type="primary" size="large">
+      <el-button type="primary" size="default">
         <el-icon class="mr-1"><DownloadIcon /></el-icon>导出结果
       </el-button>
-      <el-button type="warning" size="large" plain>
+      <el-button type="warning" size="default" plain>
         <el-icon class="mr-1"><Star /></el-icon>加入收藏
       </el-button>
-      <el-button size="large" plain @click="store.reset()">
+      <el-button size="default" plain @click="store.reset()">
         <el-icon class="mr-1"><Back /></el-icon>返回
       </el-button>
     </div>
@@ -524,16 +524,17 @@ function parseStructuredEdit(key: string, value: string) {
 
 <style scoped>
 :deep(.el-card) {
-  background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background-color: rgba(14, 17, 23, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  box-shadow: none;
 }
 :deep(.el-card__header) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 14px 20px;
+  padding: 12px 16px;
 }
 :deep(.el-card__body) {
-  padding: 18px 20px;
+  padding: 16px;
 }
 :deep(.el-radio-button__inner) {
   background-color: rgba(255, 255, 255, 0.04);
@@ -556,16 +557,17 @@ function parseStructuredEdit(key: string, value: string) {
 }
 .prompt-editor {
   width: 100%;
-  min-height: 220px;
+  min-height: 200px;
   resize: vertical;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.055);
   padding: 14px 16px;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.84);
   font-size: 14px;
   line-height: 1.8;
   outline: none;
+  user-select: text;
 }
 .prompt-editor:focus {
   border-color: rgba(45, 212, 191, 0.45);
@@ -573,16 +575,17 @@ function parseStructuredEdit(key: string, value: string) {
 }
 .struct-editor {
   width: 100%;
-  min-height: 88px;
+  min-height: 76px;
   resize: vertical;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.05);
   padding: 10px 12px;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.86);
   font-size: 14px;
   line-height: 1.75;
   outline: none;
+  user-select: text;
 }
 .struct-editor:focus {
   border-color: rgba(45, 212, 191, 0.42);
