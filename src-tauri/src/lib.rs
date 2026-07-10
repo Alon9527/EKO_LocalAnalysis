@@ -1,6 +1,8 @@
 mod storage;
 mod analyzer;
 mod exporter;
+mod importer;
+mod bridge;
 
 use serde::Deserialize;
 use storage::{Settings, HistoryItem, HistoryQuery};
@@ -60,6 +62,11 @@ async fn clear_history() -> Result<(), String> {
 #[tauri::command]
 async fn export_items(ids: Vec<String>, format: String, output_path: String) -> Result<serde_json::Value, String> {
     exporter::export_items(&ids, &format, &output_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn import_items(input_path: String) -> Result<serde_json::Value, String> {
+    importer::import_items(&input_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -124,6 +131,10 @@ pub fn run() {
     storage::ensure_data_dir().expect("Failed to create data directory");
 
     tauri::Builder::default()
+        .setup(|_| {
+            bridge::spawn();
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -139,6 +150,7 @@ pub fn run() {
             toggle_favorite,
             clear_history,
             export_items,
+            import_items,
             read_file_as_data_url,
             read_thumbnail_as_data_url,
             scan_folder,

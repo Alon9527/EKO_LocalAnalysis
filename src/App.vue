@@ -1,38 +1,26 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { useSettingsStore } from "@/stores/settings";
-import { useUpdateStore } from "@/stores/update";
 import TitleBar from "@/components/TitleBar.vue";
 import SideBar from "@/components/SideBar.vue";
 
 const settingsStore = useSettingsStore();
-const updateStore = useUpdateStore();
 
 onMounted(() => {
   settingsStore.load();
-  updateStore.check(true);
 });
 </script>
 
 <template>
   <div class="relative flex flex-col h-screen w-screen overflow-hidden
-              bg-[radial-gradient(120%_120%_at_50%_0%,#121225_0%,#0c0c14_45%,#07070c_100%)] text-white">
+              bg-[linear-gradient(145deg,#0b0d11_0%,#101117_45%,#07080b_100%)] text-white">
 
-    <!-- 🌌 Ambient glow system -->
-    <div class="pointer-events-none absolute top-[-20%] left-[-10%] w-[70%] h-[70%]
-                bg-[radial-gradient(circle,rgba(45,212,191,0.12)_0%,transparent_60%)]
-                blur-2xl" />
-
-    <div class="pointer-events-none absolute bottom-[-25%] right-[-10%] w-[60%] h-[60%]
-                bg-[radial-gradient(circle,rgba(99,102,241,0.10)_0%,transparent_65%)]
-                blur-2xl" />
-
-    <!-- vignette -->
+    <!-- Workspace texture -->
     <div class="pointer-events-none absolute inset-0
-                bg-[radial-gradient(circle,transparent_40%,rgba(0,0,0,0.7)_100%)]" />
+                bg-[linear-gradient(180deg,rgba(255,255,255,0.035)_0%,transparent_34%),linear-gradient(90deg,rgba(45,212,191,0.045)_0%,transparent_28%,rgba(255,255,255,0.018)_100%)]" />
 
     <!-- subtle noise overlay -->
-    <div class="pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay
+    <div class="pointer-events-none absolute inset-0 opacity-[0.035] mix-blend-overlay
                 bg-[url('/noise.png')]" />
 
     <!-- App chrome -->
@@ -42,11 +30,11 @@ onMounted(() => {
 
       <!-- Sidebar -->
       <SideBar
-        class="relative z-10 backdrop-blur-xl bg-white/5 border-r border-white/10"
+        class="relative z-10 bg-[#0d1014]/95 border-r border-white/[0.08]"
       />
 
       <!-- Main -->
-      <main class="flex-1 min-w-0 relative overflow-hidden">
+      <main class="flex-1 min-w-0 relative overflow-hidden bg-[#090a0f]/45">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <keep-alive>

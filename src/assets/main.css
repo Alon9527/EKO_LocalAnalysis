@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0a0a0f;
+  --color-background: #08090d;
   --color-foreground: rgba(255, 255, 255, 0.92);
-  --color-muted: rgba(255, 255, 255, 0.56);
-  --color-muted-foreground: rgba(255, 255, 255, 0.32);
-  --color-card: rgba(255, 255, 255, 0.04);
+  --color-muted: rgba(255, 255, 255, 0.62);
+  --color-muted-foreground: rgba(255, 255, 255, 0.42);
+  --color-card: rgba(16, 19, 26, 0.78);
   --color-card-foreground: rgba(255, 255, 255, 0.92);
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-input: rgba(255, 255, 255, 0.04);
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-input: rgba(255, 255, 255, 0.055);
   --color-ring: rgba(45, 212, 191, 0.3);
   --color-accent: #2dd4bf;
   --color-accent-foreground: #0a0a0f;
@@ -43,7 +43,30 @@ body {
   font-family: -apple-system, "SF Pro Display", "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  user-select: text;
+}
+
+button,
+[role="button"],
+[data-tauri-drag-region],
+.el-button,
+.el-menu,
+.el-radio-group,
+.el-select,
+.select-none {
   user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"],
+.select-text {
+  user-select: text;
+}
+
+::selection {
+  background: rgba(45, 212, 191, 0.34);
+  color: rgba(255, 255, 255, 0.96);
 }
 
 ::-webkit-scrollbar { width: 6px; }
@@ -64,9 +87,9 @@ html.dark, html {
   --el-bg-color-page: transparent;
   --el-bg-color-overlay: #16161e;
   --el-text-color-primary: rgba(255, 255, 255, 0.92);
-  --el-text-color-regular: rgba(255, 255, 255, 0.78);
-  --el-text-color-secondary: rgba(255, 255, 255, 0.55);
-  --el-text-color-placeholder: rgba(255, 255, 255, 0.3);
+  --el-text-color-regular: rgba(255, 255, 255, 0.80);
+  --el-text-color-secondary: rgba(255, 255, 255, 0.62);
+  --el-text-color-placeholder: rgba(255, 255, 255, 0.42);
   --el-border-color: rgba(255, 255, 255, 0.1);
   --el-border-color-light: rgba(255, 255, 255, 0.08);
   --el-border-color-lighter: rgba(255, 255, 255, 0.06);
@@ -74,4 +97,31 @@ html.dark, html {
   --el-fill-color-light: rgba(255, 255, 255, 0.06);
   --el-fill-color-lighter: rgba(255, 255, 255, 0.03);
   --el-fill-color-blank: transparent;
+  --el-border-radius-base: 10px;
+  --el-border-radius-small: 8px;
+}
+
+.el-button {
+  font-weight: 600;
+}
+
+.el-button--large {
+  --el-button-size: 38px;
+  padding: 10px 15px;
+}
+
+.el-input__wrapper,
+.el-select__wrapper {
+  background-color: rgba(255, 255, 255, 0.055) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.09) inset !important;
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16) inset !important;
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.48) inset, 0 0 0 3px rgba(45, 212, 191, 0.09) !important;
 }

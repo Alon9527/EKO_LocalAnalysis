@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "EKO 图片反推助手",
+  "version": "0.1.0",
+  "description": "从网页图片发送到本地 EKO 图片反推工具分析，结果自动保存到本地软件历史记录。",
+  "permissions": ["activeTab", "contextMenus", "clipboardWrite"],
+  "host_permissions": ["http://127.0.0.1:17621/*"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

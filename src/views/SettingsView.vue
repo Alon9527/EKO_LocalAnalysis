@@ -140,17 +140,17 @@ async function clearAll() {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto px-8 py-6">
+  <div class="h-full overflow-y-auto px-7 py-5">
     <div data-tauri-drag-region class="h-1" />
-    <div class="max-w-[820px] mx-auto space-y-4">
+    <div class="max-w-[960px] mx-auto grid grid-cols-[minmax(0,1fr)_300px] gap-4 items-start">
       <!-- API Settings -->
-      <el-card>
+      <el-card class="settings-card settings-card--primary">
         <template #header>
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center">
+            <div class="w-7 h-7 rounded-lg bg-teal-500/15 flex items-center justify-center">
               <el-icon :size="18" color="#2dd4bf"><Setting /></el-icon>
             </div>
-            <span class="text-[18px] font-semibold text-white/90">API 设置</span>
+            <span class="text-[16px] font-semibold text-white/90">API 设置</span>
           </div>
         </template>
 
@@ -226,7 +226,7 @@ async function clearAll() {
             </el-form-item>
           </div>
 
-          <div class="pt-3">
+          <div class="pt-1">
             <el-button type="primary" size="default" :loading="saving" @click="save">
               <el-icon class="mr-1.5"><Check /></el-icon>保存设置
             </el-button>
@@ -235,21 +235,21 @@ async function clearAll() {
       </el-card>
 
       <!-- About / Update -->
-      <el-card>
+      <el-card class="settings-card">
         <template #header>
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+            <div class="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
               <el-icon :size="18" color="#60a5fa"><Refresh /></el-icon>
             </div>
-            <span class="text-[18px] font-semibold text-white/90">关于与更新</span>
+            <span class="text-[16px] font-semibold text-white/90">关于与更新</span>
           </div>
         </template>
-        <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="space-y-3">
           <div>
             <p class="text-[13px] text-white/75 font-medium mb-1">图片反推工具</p>
             <p class="text-[13px] text-white/45">当前版本：v{{ currentVersion }}</p>
           </div>
-          <el-button type="primary" size="default" :loading="checking" @click="checkUpdate">
+          <el-button class="w-full" type="primary" size="default" :loading="checking" @click="checkUpdate">
             <el-icon class="mr-1.5"><Refresh /></el-icon>检查更新
           </el-button>
         </div>
@@ -263,20 +263,20 @@ async function clearAll() {
       </el-dialog>
 
       <!-- Data Management -->
-      <el-card>
+      <el-card class="settings-card">
         <template #header>
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
+            <div class="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
               <el-icon :size="18" color="#f87171"><Delete /></el-icon>
             </div>
-            <span class="text-[18px] font-semibold text-white/90">数据管理</span>
+            <span class="text-[16px] font-semibold text-white/90">数据管理</span>
           </div>
         </template>
 
-        <p class="text-[13px] text-white/55 leading-relaxed mb-4">
+        <p class="text-[12px] text-white/58 leading-relaxed mb-4">
           清除所有历史记录和缓存的缩略图数据。此操作不可恢复。
         </p>
-        <el-button type="danger" size="default" plain @click="clearAll">
+        <el-button class="w-full" type="danger" size="default" plain @click="clearAll">
           <el-icon class="mr-1.5"><Delete /></el-icon>清除全部数据
         </el-button>
       </el-card>
@@ -286,34 +286,38 @@ async function clearAll() {
 
 <style scoped>
 :deep(.el-card) {
-  background-color: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  background-color: rgba(14, 17, 23, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.settings-card--primary {
+  grid-row: span 2;
 }
 :deep(.el-card__header) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 14px 20px;
+  padding: 11px 16px;
 }
 :deep(.el-card__body) {
-  padding: 18px 20px;
+  padding: 14px 16px;
 }
 :deep(.settings-form .el-form-item) {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 :deep(.settings-form .el-form-item__label) {
-  font-size: 13px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
-  color: rgba(255, 255, 255, 0.75) !important;
-  padding-bottom: 5px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  padding-bottom: 4px !important;
   line-height: 1.4 !important;
 }
 :deep(.settings-form .el-input__wrapper),
 :deep(.settings-form .el-select__wrapper),
 :deep(.settings-form .el-input-number) {
-  font-size: 13px !important;
+  font-size: 12px !important;
 }
 :deep(.settings-form .el-input__inner) {
-  height: 36px !important;
-  font-size: 13px !important;
+  height: 32px !important;
+  font-size: 12px !important;
 }
 </style>
