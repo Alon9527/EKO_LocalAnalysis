@@ -45,7 +45,7 @@
       "endpoints": [
         "https://github.com/Alon9527/EKO_LocalAnalysis/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU2ODUzOUVEQjBEMzAyNDMKUldSREF0T3c3VG1GVnMyNlVMY2ZxL0gwZzRMeFUrYTM1UnVFcnBVK291VGthcEhqUEl5UVhjcDQK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJGRkI4NkJFQjRCQkY0NzEKUldSeDlMdTB2b2I3djdjQVh0QkovbkgzNmR6VnkyMDlDWjliUkU3ekpxeVdhd3NJcS9ScHVXODkK",
       "windows": {
         "installMode": "passive"
       }
