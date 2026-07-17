@@ -7,11 +7,14 @@ import {
   Search,
   Star,
 } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 import type { MaterialCategory, MaterialPatch } from "@/lib/api";
 import { MATERIAL_CATEGORY_LABELS } from "@/lib/materials";
 import { useMaterialsStore } from "@/stores/materials";
 import MaterialAssetCard from "@/components/materials/MaterialAssetCard.vue";
 import MaterialDetailDrawer from "@/components/materials/MaterialDetailDrawer.vue";
+
+type OperationComplete = (success: boolean) => void;
 
 const store = useMaterialsStore();
 const route = useRoute();
@@ -84,18 +87,39 @@ function closeAsset() {
 }
 
 async function saveAsset(id: string, patch: MaterialPatch) {
-  await store.saveAsset(id, patch);
+  const saved = await store.saveAsset(id, patch);
+  if (saved) ElMessage.success("素材已保存");
+  else ElMessage.error(store.error || "保存素材失败");
 }
 
-async function mergeAssets(ids: string[], displayName?: string) {
+async function mergeAssets(
+  ids: string[],
+  displayName: string | undefined,
+  complete: OperationComplete = () => {},
+) {
   const merged = await store.mergeAssets(ids, displayName);
-  if (!merged) return;
+  if (!merged) {
+    complete(false);
+    ElMessage.error(store.error || "合并素材失败");
+    return;
+  }
   await store.loadMergeCandidates(merged.category);
   router.replace({ query: { ...route.query, asset: merged.id } });
+  complete(true);
+  ElMessage.success("素材已合并");
 }
 
-async function splitAsset(id: string, sourceIds: string[], displayName: string) {
-  await store.splitAsset(id, sourceIds, displayName);
+async function splitAsset(
+  id: string,
+  sourceIds: string[],
+  displayName: string,
+  complete: OperationComplete = () => {},
+) {
+  const changed = await store.splitAsset(id, sourceIds, displayName);
+  const succeeded = changed.length > 0;
+  complete(succeeded);
+  if (succeeded) ElMessage.success("素材已拆分");
+  else ElMessage.error(store.error || "拆分素材失败");
 }
 
 async function toggleFavorite(id: string, favorite: boolean) {
@@ -104,7 +128,11 @@ async function toggleFavorite(id: string, favorite: boolean) {
 
 async function rebuildIndex() {
   menuOpen.value = false;
-  await store.rebuild();
+  const rebuilt = await store.rebuild();
+  if (rebuilt && store.error) {
+    ElMessage.warning(`素材索引已重建，但列表刷新失败：${store.error}`);
+  } else if (rebuilt) ElMessage.success("素材索引已重建");
+  else ElMessage.error(store.error || "重建素材索引失败");
 }
 </script>
 

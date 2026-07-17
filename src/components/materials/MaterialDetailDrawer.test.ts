@@ -130,4 +130,72 @@ describe("MaterialDetailDrawer", () => {
     await flushPromises();
     expect(confirm().attributes("disabled")).toBeDefined();
   });
+
+  it("rejects a blank name without emitting a save", async () => {
+    const current = asset("chair");
+    const wrapper = mountDrawer(current);
+    const name = wrapper.get('[data-testid="display-name"] input');
+
+    await name.setValue("   ");
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="save-material"]').attributes("disabled"))
+      .toBeDefined();
+    await wrapper.get('[data-testid="save-material"]').trigger("click");
+    expect(wrapper.emitted("save")).toBeUndefined();
+    expect(current.generatedName).toBe("chair");
+  });
+
+  it("keeps the merge dialog open until the parent confirms success", async () => {
+    const wrapper = mountDrawer();
+    await wrapper.get('[data-testid="open-merge"]').trigger("click");
+    await wrapper.get('[data-testid="merge-option-table"] input').setValue(true);
+    await wrapper.get('[data-testid="confirm-merge"]').trigger("click");
+    await flushPromises();
+
+    const emitted = wrapper.emitted("merge")?.[0] || [];
+    const complete = emitted[2] as ((success: boolean) => void) | undefined;
+    expect(complete).toBeTypeOf("function");
+    expect(wrapper.find('[aria-labelledby="merge-material-title"]').exists()).toBe(true);
+
+    complete?.(false);
+    await flushPromises();
+    expect(wrapper.find('[aria-labelledby="merge-material-title"]').exists()).toBe(true);
+
+    complete?.(true);
+    await flushPromises();
+    expect(wrapper.find('[aria-labelledby="merge-material-title"]').exists()).toBe(false);
+  });
+
+  it("isolates stale completions and lets users cancel pending operations", async () => {
+    const wrapper = mountDrawer();
+    await wrapper.get('[data-testid="open-merge"]').trigger("click");
+    await wrapper.get('[data-testid="merge-option-table"] input').setValue(true);
+    await wrapper.get('[data-testid="confirm-merge"]').trigger("click");
+    const staleComplete = wrapper.emitted("merge")?.[0]?.[2] as (
+      success: boolean,
+    ) => void;
+
+    await wrapper.setProps({ asset: asset("sofa") });
+    await flushPromises();
+    await wrapper.get('[data-testid="open-merge"]').trigger("click");
+    await wrapper.get('[data-testid="merge-option-table"] input').setValue(true);
+    await wrapper.get('[data-testid="confirm-merge"]').trigger("click");
+    const currentComplete = wrapper.emitted("merge")?.[1]?.[2] as (
+      success: boolean,
+    ) => void;
+
+    staleComplete(true);
+    await flushPromises();
+    const panel = wrapper.get('[aria-labelledby="merge-material-title"]');
+    expect(panel.text()).toContain("正在合并");
+
+    await panel.get("button.secondary-button").trigger("click");
+    await flushPromises();
+    expect(wrapper.find('[aria-labelledby="merge-material-title"]').exists()).toBe(false);
+
+    currentComplete(true);
+    await flushPromises();
+    expect(wrapper.find('[aria-labelledby="merge-material-title"]').exists()).toBe(false);
+  });
 });

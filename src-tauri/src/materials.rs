@@ -792,6 +792,68 @@ mod tests {
     }
 
     #[test]
+    fn blank_patch_is_rejected_without_mutating_the_asset() {
+        let mut index = build_index(&[structured_history()], None);
+        let asset_id = index
+            .assets
+            .iter()
+            .find(|asset| asset.category == MaterialCategory::Element)
+            .unwrap()
+            .id
+            .clone();
+        let before = index.clone();
+
+        let result = apply_patch(
+            &mut index,
+            &asset_id,
+            MaterialPatch {
+                display_name: Some("   ".into()),
+                ..MaterialPatch::default()
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(index, before);
+    }
+
+    #[test]
+    fn stale_index_rebuild_preserves_manual_name_and_favorite() {
+        let (primary, backup) = test_index_paths("stale-preserves-overrides");
+        let first = structured_history();
+        let mut index = build_index(&[first.clone()], None);
+        let asset_id = index
+            .assets
+            .iter()
+            .find(|asset| asset.category == MaterialCategory::Element)
+            .unwrap()
+            .id
+            .clone();
+        apply_patch(
+            &mut index,
+            &asset_id,
+            MaterialPatch {
+                display_name: Some("Edited chair".into()),
+                favorite: Some(true),
+                ..MaterialPatch::default()
+            },
+        )
+        .unwrap();
+        let old_fingerprint = index.history_fingerprint.clone();
+        save_index_to(&index, &primary, &backup).unwrap();
+
+        let mut second = first.clone();
+        second.id = "history-2".into();
+        second.created_at += 1;
+        let ensured = ensure_index_from(&[first, second], &primary, &backup).unwrap();
+        let asset = ensured.assets.iter().find(|asset| asset.id == asset_id).unwrap();
+
+        assert_ne!(ensured.history_fingerprint, old_fingerprint);
+        assert_eq!(asset.user_override.display_name.as_deref(), Some("Edited chair"));
+        assert!(asset.user_override.favorite);
+        assert!(asset.sources.iter().any(|source| source.history_id == "history-2"));
+    }
+
+    #[test]
     fn patched_index_can_be_saved_and_loaded_durably() {
         let (primary, backup) = test_index_paths("durable-patch");
         let mut index = build_index(&[structured_history()], None);

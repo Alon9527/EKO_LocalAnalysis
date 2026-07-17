@@ -169,8 +169,10 @@ export const useMaterialsStore = defineStore("materials", () => {
           (item) => item.id === selectedAsset.value?.id,
         ) || null;
       }
+      return true;
     } catch (caught) {
       error.value = errorText(caught);
+      return false;
     } finally {
       rebuilding.value = false;
     }

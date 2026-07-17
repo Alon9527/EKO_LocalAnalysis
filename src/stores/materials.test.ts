@@ -86,6 +86,33 @@ describe("materials store", () => {
     expect(store.loading).toBe(false);
   });
 
+  it("reports rebuild success when its refresh is superseded by a newer load", async () => {
+    let resolveRebuildLoad!: (value: MaterialListResponse) => void;
+    let resolveLatestLoad!: (value: MaterialListResponse) => void;
+    vi.spyOn(api, "rebuildMaterialIndex").mockResolvedValue(response([]));
+    vi.spyOn(api, "listMaterials")
+      .mockImplementationOnce(
+        () => new Promise((resolve) => { resolveRebuildLoad = resolve; }),
+      )
+      .mockImplementationOnce(
+        () => new Promise((resolve) => { resolveLatestLoad = resolve; }),
+      );
+    const store = useMaterialsStore();
+
+    const rebuilding = store.rebuild();
+    await Promise.resolve();
+    await Promise.resolve();
+    store.keyword = "new";
+    const latestLoad = store.load();
+    resolveLatestLoad(response([asset("new", "New result")]));
+    await latestLoad;
+    resolveRebuildLoad(response([asset("old", "Old result")]));
+
+    await expect(rebuilding).resolves.toBe(true);
+    expect(store.items[0].id).toBe("new");
+    expect(store.error).toBe("");
+  });
+
   it("loads the breakdown for one history record", async () => {
     const item = asset();
     const getHistory = vi
@@ -206,8 +233,9 @@ describe("materials store", () => {
     store.openAsset(selected.id);
     store.keyword = "filtered";
 
-    await store.rebuild();
+    const rebuilt = await store.rebuild();
 
+    expect(rebuilt).toBe(true);
     expect(list).toHaveBeenCalledWith({ keyword: "filtered" });
     expect(store.items).toEqual([filtered]);
     expect(store.selectedAsset).toBeNull();
@@ -219,8 +247,9 @@ describe("materials store", () => {
     const store = useMaterialsStore();
     store.items = [original];
 
-    await store.rebuild();
+    const rebuilt = await store.rebuild();
 
+    expect(rebuilt).toBe(false);
     expect(store.items).toEqual([original]);
     expect(store.error).toContain("disk full");
     expect(store.rebuilding).toBe(false);

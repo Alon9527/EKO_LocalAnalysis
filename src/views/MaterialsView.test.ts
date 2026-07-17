@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
-import ElementPlus from "element-plus";
+import ElementPlus, { ElMessage } from "element-plus";
 import type { MaterialAsset } from "@/lib/api";
 import { useMaterialsStore } from "@/stores/materials";
 import MaterialsView from "@/views/MaterialsView.vue";
@@ -39,7 +39,7 @@ async function mountView(items = [asset()]) {
   const store = useMaterialsStore();
   store.items = items;
   const load = vi.spyOn(store, "load").mockResolvedValue(true);
-  const rebuild = vi.spyOn(store, "rebuild").mockResolvedValue();
+  const rebuild = vi.spyOn(store, "rebuild").mockResolvedValue(true);
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -134,5 +134,50 @@ describe("MaterialsView", () => {
     await wrapper.get('[data-testid="open-library-menu"]').trigger("click");
     await wrapper.get('[data-testid="rebuild-index"]').trigger("click");
     expect(rebuild).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports operation results and keeps failed merge dialogs open", async () => {
+    const { wrapper, store, rebuild } = await mountView();
+    const success = vi.spyOn(ElMessage, "success");
+    const failure = vi.spyOn(ElMessage, "error");
+    const warning = vi.spyOn(ElMessage, "warning");
+    const drawer = wrapper.getComponent({ name: "MaterialDetailDrawer" });
+    const save = vi.spyOn(store, "saveAsset").mockResolvedValue(asset());
+    const merge = vi.spyOn(store, "mergeAssets").mockResolvedValue(asset("merged"));
+    const completeMerge = vi.fn();
+
+    drawer.vm.$emit("save", "asset-1", { displayName: "Reading chair" });
+    await flushPromises();
+    expect(save).toHaveBeenCalled();
+    expect(success).toHaveBeenCalledWith("素材已保存");
+
+    drawer.vm.$emit("merge", ["asset-1", "asset-2"], "Merged", completeMerge);
+    await flushPromises();
+    expect(completeMerge).toHaveBeenCalledWith(true);
+    expect(success).toHaveBeenCalledWith("素材已合并");
+
+    merge.mockResolvedValueOnce(null);
+    store.error = "Merge failed";
+    const rejectMerge = vi.fn();
+    drawer.vm.$emit("merge", ["asset-1", "asset-2"], "Merged", rejectMerge);
+    await flushPromises();
+    expect(rejectMerge).toHaveBeenCalledWith(false);
+    expect(failure).toHaveBeenCalledWith("Merge failed");
+
+    store.error = "";
+    rebuild.mockResolvedValueOnce(true);
+    await wrapper.get('[data-testid="open-library-menu"]').trigger("click");
+    await wrapper.get('[data-testid="rebuild-index"]').trigger("click");
+    await flushPromises();
+    expect(success).toHaveBeenCalledWith("素材索引已重建");
+
+    store.error = "Refresh failed";
+    rebuild.mockResolvedValueOnce(true);
+    await wrapper.get('[data-testid="open-library-menu"]').trigger("click");
+    await wrapper.get('[data-testid="rebuild-index"]').trigger("click");
+    await flushPromises();
+    expect(warning).toHaveBeenCalledWith(
+      "素材索引已重建，但列表刷新失败：Refresh failed",
+    );
   });
 });

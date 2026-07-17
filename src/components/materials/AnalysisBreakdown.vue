@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { Check, CopyDocument, Right } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 import type {
   MaterialAsset,
   MaterialCategory,
@@ -74,6 +75,7 @@ watch(
 async function copySource(row: BreakdownRow) {
   try {
     await navigator.clipboard.writeText(row.source.promptZh);
+    ElMessage.success("已复制");
     copiedId.value = row.asset.id;
     window.setTimeout(() => {
       if (copiedId.value === row.asset.id) copiedId.value = "";

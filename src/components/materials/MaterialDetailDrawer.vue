@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { Close, CopyDocument, Star, StarFilled } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 import type { MaterialAsset, MaterialPatch } from "@/lib/api";
+
+type OperationComplete = (success: boolean) => void;
 import {
   MATERIAL_CATEGORY_LABELS,
   materialDisplayName,
@@ -19,8 +22,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   "update:modelValue": [value: boolean];
   save: [id: string, patch: MaterialPatch];
-  merge: [ids: string[], displayName?: string];
-  split: [id: string, sourceIds: string[], displayName: string];
+  merge: [ids: string[], displayName: string | undefined, complete: OperationComplete];
+  split: [id: string, sourceIds: string[], displayName: string, complete: OperationComplete];
   "toggle-favorite": [id: string, favorite: boolean];
 }>();
 
@@ -30,9 +33,11 @@ const promptZh = ref("");
 const promptEn = ref("");
 const aliasesText = ref("");
 const mergeOpen = ref(false);
+const mergePending = ref(false);
 const mergeTarget = ref("");
 const mergeName = ref("");
 const splitOpen = ref(false);
+const splitPending = ref(false);
 const splitSourceIds = ref<string[]>([]);
 const splitName = ref("");
 const copied = ref("");
@@ -41,6 +46,8 @@ const splitPanel = ref<HTMLDivElement | null>(null);
 const mergeTrigger = ref<HTMLButtonElement | null>(null);
 const splitTrigger = ref<HTMLButtonElement | null>(null);
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+let mergeOperationId = 0;
+let splitOperationId = 0;
 
 const sameCategoryCandidates = computed(() => {
   if (!props.asset) return [];
@@ -67,12 +74,24 @@ function focusFirst(panelRef: { value: HTMLElement | null }) {
   });
 }
 
+function cancelMergeOperation() {
+  mergeOperationId += 1;
+  mergePending.value = false;
+}
+
+function cancelSplitOperation() {
+  splitOperationId += 1;
+  splitPending.value = false;
+}
+
 function closeMerge() {
+  cancelMergeOperation();
   mergeOpen.value = false;
   nextTick(() => mergeTrigger.value?.focus());
 }
 
 function closeSplit() {
+  cancelSplitOperation();
   splitOpen.value = false;
   nextTick(() => splitTrigger.value?.focus());
 }
@@ -82,6 +101,8 @@ function resetForm(asset: MaterialAsset | null) {
   copied.value = "";
   mergeOpen.value = false;
   splitOpen.value = false;
+  cancelMergeOperation();
+  cancelSplitOperation();
   mergeTarget.value = "";
   splitSourceIds.value = [];
   if (!asset) return;
@@ -116,7 +137,9 @@ function save() {
 
 function openMerge() {
   if (!props.asset) return;
+  cancelSplitOperation();
   splitOpen.value = false;
+  cancelMergeOperation();
   mergeTarget.value = "";
   mergeName.value = materialDisplayName(props.asset);
   mergeOpen.value = true;
@@ -124,14 +147,26 @@ function openMerge() {
 }
 
 function confirmMerge() {
-  if (!props.asset || !mergeTarget.value) return;
-  emit("merge", [props.asset.id, mergeTarget.value], mergeName.value.trim() || undefined);
-  closeMerge();
+  if (!props.asset || !mergeTarget.value || mergePending.value) return;
+  mergePending.value = true;
+  const operationId = ++mergeOperationId;
+  emit(
+    "merge",
+    [props.asset.id, mergeTarget.value],
+    mergeName.value.trim() || undefined,
+    (success) => {
+      if (operationId !== mergeOperationId) return;
+      mergePending.value = false;
+      if (success) closeMerge();
+    },
+  );
 }
 
 function openSplit() {
   if (!props.asset) return;
+  cancelMergeOperation();
   mergeOpen.value = false;
+  cancelSplitOperation();
   splitSourceIds.value = [];
   splitName.value = `${materialDisplayName(props.asset)} - 新素材`;
   splitOpen.value = true;
@@ -139,9 +174,20 @@ function openSplit() {
 }
 
 function confirmSplit() {
-  if (!props.asset || !canSplit.value) return;
-  emit("split", props.asset.id, [...splitSourceIds.value], splitName.value.trim());
-  closeSplit();
+  if (!props.asset || !canSplit.value || splitPending.value) return;
+  splitPending.value = true;
+  const operationId = ++splitOperationId;
+  emit(
+    "split",
+    props.asset.id,
+    [...splitSourceIds.value],
+    splitName.value.trim(),
+    (success) => {
+      if (operationId !== splitOperationId) return;
+      splitPending.value = false;
+      if (success) closeSplit();
+    },
+  );
 }
 
 function setSplitSource(sourceId: string, event: Event) {
@@ -180,6 +226,7 @@ async function copyPrompt(language: "zh" | "en") {
   if (!value) return;
   try {
     await navigator.clipboard.writeText(value);
+    ElMessage.success("已复制");
     copied.value = language;
     window.setTimeout(() => {
       if (copied.value === language) copied.value = "";
@@ -365,10 +412,10 @@ async function copyPrompt(language: "zh" | "en") {
             data-testid="confirm-merge"
             type="button"
             class="primary-button"
-            :disabled="!mergeTarget"
+            :disabled="!mergeTarget || mergePending"
             @click="confirmMerge"
           >
-            确认合并
+            {{ mergePending ? "正在合并" : "确认合并" }}
           </button>
         </div>
       </div>
@@ -421,10 +468,10 @@ async function copyPrompt(language: "zh" | "en") {
             data-testid="confirm-split"
             type="button"
             class="primary-button"
-            :disabled="!canSplit"
+            :disabled="!canSplit || splitPending"
             @click="confirmSplit"
           >
-            创建新素材
+            {{ splitPending ? "正在创建" : "创建新素材" }}
           </button>
         </div>
       </div>
