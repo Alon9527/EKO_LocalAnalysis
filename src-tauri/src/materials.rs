@@ -1085,6 +1085,33 @@ mod tests {
         let unique: std::collections::HashSet<_> = source_ids.iter().collect();
         assert_eq!(source_ids.len(), unique.len());
     }
+
+    #[test]
+    fn history_delta_includes_concurrent_records_before_marking_index_current() {
+        let previous = Vec::new();
+        let mut first = structured_history();
+        first.id = "history-a".into();
+        let mut second = structured_history();
+        second.id = "history-b".into();
+        second.created_at = 2000;
+        let current = vec![first, second.clone()];
+        let mut index = build_index(&previous, None);
+
+        reconcile_history_delta(
+            &mut index,
+            &previous,
+            &current,
+            std::slice::from_ref(&second),
+        );
+
+        let history_ids: std::collections::HashSet<_> = index
+            .assets
+            .iter()
+            .flat_map(|asset| asset.sources.iter().map(|source| source.history_id.as_str()))
+            .collect();
+        assert_eq!(history_ids, std::collections::HashSet::from(["history-a", "history-b"]));
+        assert_eq!(index.history_fingerprint, history_fingerprint(&current));
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -1943,8 +1970,59 @@ pub fn rebuild_index(history: &[HistoryItem]) -> Result<MaterialIndex, AnyError>
     rebuild_index_from(history, &materials_index_path(), &materials_index_backup_path())
 }
 
-fn prepare_incremental_sync(previous_history: &[HistoryItem]) -> Result<(), AnyError> {
-    ensure_index(previous_history).map(|_| ())
+fn mutate_index_after_ensuring<T, F>(
+    previous_history: &[HistoryItem],
+    mutation: F,
+) -> Result<T, AnyError>
+where
+    F: FnOnce(&mut MaterialIndex) -> Result<T, AnyError>,
+{
+    let _guard = lock_material_index()?;
+    let primary = materials_index_path();
+    let backup = materials_index_backup_path();
+    let mut index = ensure_index_from(previous_history, &primary, &backup)?;
+    let output = mutation(&mut index)?;
+    save_index_to(&index, &primary, &backup)?;
+    Ok(output)
+}
+
+fn same_material_revision(left: &HistoryItem, right: &HistoryItem) -> bool {
+    left.id == right.id
+        && left.created_at == right.created_at
+        && left.reconstructed_prompt == right.reconstructed_prompt
+        && left.prompt_en == right.prompt_en
+}
+
+fn reconcile_history_delta(
+    index: &mut MaterialIndex,
+    previous_history: &[HistoryItem],
+    current_history: &[HistoryItem],
+    forced_upserts: &[HistoryItem],
+) {
+    let removed_ids: Vec<_> = previous_history
+        .iter()
+        .filter(|previous| {
+            !current_history
+                .iter()
+                .any(|current| current.id == previous.id)
+        })
+        .map(|item| item.id.clone())
+        .collect();
+    if !removed_ids.is_empty() {
+        remove_history_sources(index, &removed_ids);
+    }
+
+    for current in current_history {
+        let forced = forced_upserts.iter().any(|item| item.id == current.id);
+        let changed = !previous_history
+            .iter()
+            .any(|previous| same_material_revision(previous, current));
+        if forced || changed {
+            upsert_history_source(index, current);
+        }
+    }
+    index.history_fingerprint = history_fingerprint(current_history);
+    index.updated_at = current_timestamp();
 }
 
 pub fn sync_history_upserts(
@@ -1952,14 +2030,8 @@ pub fn sync_history_upserts(
     current_history: &[HistoryItem],
     items: &[HistoryItem],
 ) -> Result<(), AnyError> {
-    prepare_incremental_sync(previous_history)?;
-    let fingerprint = history_fingerprint(current_history);
-    mutate_index(|index| {
-        for item in items {
-            upsert_history_source(index, item);
-        }
-        index.history_fingerprint = fingerprint;
-        index.updated_at = current_timestamp();
+    mutate_index_after_ensuring(previous_history, |index| {
+        reconcile_history_delta(index, previous_history, current_history, items);
         Ok(())
     })
 }
@@ -1969,20 +2041,33 @@ pub fn sync_removed_history(
     current_history: &[HistoryItem],
     ids: &[String],
 ) -> Result<(), AnyError> {
-    prepare_incremental_sync(previous_history)?;
-    let fingerprint = history_fingerprint(current_history);
-    mutate_index(|index| {
-        remove_history_sources(index, ids);
-        index.history_fingerprint = fingerprint;
-        index.updated_at = current_timestamp();
+    mutate_index_after_ensuring(previous_history, |index| {
+        let forced_upserts: Vec<_> = current_history
+            .iter()
+            .filter(|item| ids.iter().any(|id| id == &item.id))
+            .cloned()
+            .collect();
+        reconcile_history_delta(
+            index,
+            previous_history,
+            current_history,
+            &forced_upserts,
+        );
         Ok(())
     })
 }
 
-pub fn sync_cleared_history(previous_history: &[HistoryItem]) -> Result<(), AnyError> {
-    prepare_incremental_sync(previous_history)?;
-    mutate_index(|index| {
+pub fn sync_cleared_history(
+    previous_history: &[HistoryItem],
+    current_history: &[HistoryItem],
+) -> Result<(), AnyError> {
+    mutate_index_after_ensuring(previous_history, |index| {
         clear_generated_sources(index);
+        for item in current_history {
+            upsert_history_source(index, item);
+        }
+        index.history_fingerprint = history_fingerprint(current_history);
+        index.updated_at = current_timestamp();
         Ok(())
     })
 }

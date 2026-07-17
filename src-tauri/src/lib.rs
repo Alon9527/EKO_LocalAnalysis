@@ -66,7 +66,8 @@ async fn toggle_favorite(id: String) -> Result<bool, String> {
 async fn clear_history() -> Result<(), String> {
     let previous_history = storage::list_history_items();
     storage::clear_history().map_err(|e| e.to_string())?;
-    materials::sync_cleared_history(&previous_history).map_err(|error| {
+    let current_history = storage::list_history_items();
+    materials::sync_cleared_history(&previous_history, &current_history).map_err(|error| {
         format!(
             "History was cleared, but materials index sync failed: {error}"
         )
