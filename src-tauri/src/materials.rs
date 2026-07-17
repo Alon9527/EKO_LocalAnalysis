@@ -892,6 +892,12 @@ mod tests {
         let before = split_index.clone();
         assert!(merge_assets(&mut split_index, &[split.id, cushion_id.clone()], None).is_err());
         assert_eq!(split_index, before);
+        assert!(merge_assets(
+            &mut split_index,
+            &[cushion_id.clone(), chair_id.clone()],
+            None,
+        ).is_err());
+        assert_eq!(split_index, before);
 
         let mut nested_index = build_index(&[history], None);
         merge_assets(
@@ -901,6 +907,16 @@ mod tests {
         )
         .unwrap();
         let before = nested_index.clone();
+        let merged_source = nested_index
+            .assets
+            .iter()
+            .find(|asset| asset.id == chair_id)
+            .unwrap()
+            .sources[0]
+            .id
+            .clone();
+        assert!(split_asset(&mut nested_index, &chair_id, &[merged_source], "Nested".into()).is_err());
+        assert_eq!(nested_index, before);
         assert!(merge_assets(&mut nested_index, &[armrest_id, chair_id], None).is_err());
         assert_eq!(nested_index, before);
     }
@@ -1363,6 +1379,15 @@ pub fn merge_assets(
             "merged material assets cannot already be merged children or split assets",
         ));
     }
+    if selected.iter().any(|asset| {
+        index.assets.iter().any(|candidate| {
+            candidate.user_override.split_from.as_deref() == Some(asset.id.as_str())
+        })
+    }) {
+        return Err(invalid_data(
+            "material assets with split children cannot participate in a merge",
+        ));
+    }
     let target_id = unique_ids[0].clone();
     if selected.iter().skip(1).any(|asset| {
         index.assets.iter().any(|candidate| {
@@ -1428,6 +1453,13 @@ pub fn split_asset(
         || template.user_override.split_from.is_some()
     {
         return Err(invalid_data("merged children and split assets cannot be split again"));
+    }
+    if index.assets.iter().any(|candidate| {
+        candidate.user_override.merged_into.as_deref() == Some(id)
+    }) {
+        return Err(invalid_data(
+            "material assets with merged children cannot be split",
+        ));
     }
     if source_ids
         .iter()
