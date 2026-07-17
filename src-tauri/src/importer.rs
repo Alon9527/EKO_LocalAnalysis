@@ -1,3 +1,4 @@
+use crate::materials;
 use crate::storage::{self, HistoryItem};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -32,12 +33,24 @@ pub(crate) struct ImportMergeOutcome {
 pub fn import_items(input_path: &str) -> Result<Value, AnyError> {
     let archive = read_import_archive(input_path)?;
     let current = storage::list_history_items();
+    let previous_history = current.clone();
     let outcome = prepare_import_merge(current, archive);
 
     storage::replace_history_items(&outcome.items)?;
     for (id, data) in &outcome.thumbnail_writes {
         storage::write_thumbnail(id, data)?;
     }
+    let imported_items = &outcome.items[..outcome.summary.imported.min(outcome.items.len())];
+    materials::sync_history_upserts(
+        &previous_history,
+        &outcome.items,
+        imported_items,
+    )
+    .map_err(|error| {
+        boxed_error(format!(
+            "History was imported, but materials index sync failed: {error}"
+        ))
+    })?;
 
     Ok(serde_json::json!({
         "imported": outcome.summary.imported,

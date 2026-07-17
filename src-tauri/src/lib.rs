@@ -47,7 +47,14 @@ async fn get_history(query: HistoryQuery) -> Result<serde_json::Value, String> {
 
 #[tauri::command]
 async fn delete_history(ids: Vec<String>) -> Result<(), String> {
-    storage::delete_history_items(&ids).map_err(|e| e.to_string())
+    let previous_history = storage::list_history_items();
+    storage::delete_history_items(&ids).map_err(|e| e.to_string())?;
+    let current_history = storage::list_history_items();
+    materials::sync_removed_history(&previous_history, &current_history, &ids).map_err(|error| {
+        format!(
+            "History was deleted, but materials index sync failed: {error}"
+        )
+    })
 }
 
 #[tauri::command]
@@ -57,7 +64,13 @@ async fn toggle_favorite(id: String) -> Result<bool, String> {
 
 #[tauri::command]
 async fn clear_history() -> Result<(), String> {
-    storage::clear_history().map_err(|e| e.to_string())
+    let previous_history = storage::list_history_items();
+    storage::clear_history().map_err(|e| e.to_string())?;
+    materials::sync_cleared_history(&previous_history).map_err(|error| {
+        format!(
+            "History was cleared, but materials index sync failed: {error}"
+        )
+    })
 }
 
 #[tauri::command]
@@ -68,6 +81,72 @@ async fn export_items(ids: Vec<String>, format: String, output_path: String) -> 
 #[tauri::command]
 async fn import_items(input_path: String) -> Result<serde_json::Value, String> {
     importer::import_items(&input_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn list_materials(
+    query: materials::MaterialQuery,
+) -> Result<materials::MaterialListResponse, String> {
+    let history = storage::list_history_items();
+    let index = materials::ensure_index(&history).map_err(|error| error.to_string())?;
+    Ok(materials::query_index(&index, &query))
+}
+
+#[tauri::command]
+async fn get_history_materials(
+    history_id: String,
+) -> Result<Vec<materials::MaterialAsset>, String> {
+    let history = storage::list_history_items();
+    let index = materials::ensure_index(&history).map_err(|error| error.to_string())?;
+    Ok(materials::history_assets(&index, &history_id))
+}
+
+#[tauri::command]
+async fn rebuild_material_index() -> Result<materials::MaterialListResponse, String> {
+    let history = storage::list_history_items();
+    let index = materials::rebuild_index(&history).map_err(|error| error.to_string())?;
+    Ok(materials::query_index(
+        &index,
+        &materials::MaterialQuery::default(),
+    ))
+}
+
+#[tauri::command]
+async fn update_material(
+    id: String,
+    patch: materials::MaterialPatch,
+) -> Result<materials::MaterialAsset, String> {
+    let history = storage::list_history_items();
+    materials::ensure_index(&history).map_err(|error| error.to_string())?;
+    materials::mutate_index(|index| materials::apply_patch(index, &id, patch))
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn merge_materials(
+    ids: Vec<String>,
+    display_name: Option<String>,
+) -> Result<materials::MaterialAsset, String> {
+    let history = storage::list_history_items();
+    materials::ensure_index(&history).map_err(|error| error.to_string())?;
+    materials::mutate_index(|index| {
+        materials::merge_assets(index, &ids, display_name)
+    })
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn split_material(
+    id: String,
+    source_ids: Vec<String>,
+    display_name: String,
+) -> Result<Vec<materials::MaterialAsset>, String> {
+    let history = storage::list_history_items();
+    materials::ensure_index(&history).map_err(|error| error.to_string())?;
+    materials::mutate_index(|index| {
+        materials::split_asset(index, &id, &source_ids, display_name)
+    })
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -152,6 +231,12 @@ pub fn run() {
             clear_history,
             export_items,
             import_items,
+            list_materials,
+            get_history_materials,
+            rebuild_material_index,
+            update_material,
+            merge_materials,
+            split_material,
             read_file_as_data_url,
             read_thumbnail_as_data_url,
             scan_folder,

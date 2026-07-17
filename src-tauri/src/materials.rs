@@ -998,6 +998,93 @@ mod tests {
         assert!(loaded.assets.iter().any(|asset| asset.user_override.favorite));
         assert!(loaded.assets.iter().any(|asset| asset.user_override.display_name.as_deref() == Some("Edited cushion")));
     }
+
+    #[test]
+    fn material_query_and_list_response_use_the_public_json_contract() {
+        let query: MaterialQuery = serde_json::from_value(serde_json::json!({
+            "keyword": "chair",
+            "category": "lighting",
+            "favorite": true,
+            "minSources": 2
+        }))
+        .unwrap();
+        assert_eq!(query.keyword.as_deref(), Some("chair"));
+        assert_eq!(query.category, Some(MaterialCategory::Lighting));
+        assert_eq!(query.favorite, Some(true));
+        assert_eq!(query.min_sources, Some(2));
+
+        let lighting = build_index(&[structured_history()], None)
+            .assets
+            .into_iter()
+            .find(|asset| asset.category == MaterialCategory::Lighting)
+            .unwrap();
+        let response = MaterialListResponse {
+            items: vec![lighting],
+            total: 1,
+            stale: false,
+            warnings: vec![MaterialIndexWarning {
+                history_id: "history-1".into(),
+                message: "recovered".into(),
+            }],
+        };
+        let value = serde_json::to_value(response).unwrap();
+        assert_eq!(value["total"], 1);
+        assert_eq!(value["stale"], false);
+        assert_eq!(value["items"][0]["category"], "lighting");
+        assert_eq!(value["warnings"][0]["historyId"], "history-1");
+    }
+
+    #[test]
+    fn material_query_filters_category_text_favorites_and_source_count() {
+        let mut first = structured_history();
+        first.id = "history-a".into();
+        let mut second = structured_history();
+        second.id = "history-b".into();
+        second.created_at = 2000;
+        let mut index = build_index(&[first, second], None);
+        let chair_id = stable_asset_id(
+            MaterialCategory::Element,
+            &normalize_key("\u{4f11}\u{95f2}\u{6905}"),
+        );
+        apply_patch(
+            &mut index,
+            &chair_id,
+            MaterialPatch {
+                display_name: Some("Reading chair".into()),
+                favorite: Some(true),
+                ..MaterialPatch::default()
+            },
+        )
+        .unwrap();
+
+        let response = query_index(
+            &index,
+            &MaterialQuery {
+                keyword: Some("reading".into()),
+                category: Some(MaterialCategory::Element),
+                favorite: Some(true),
+                min_sources: Some(4),
+            },
+        );
+        assert_eq!(response.total, 1);
+        assert_eq!(response.items[0].id, chair_id);
+    }
+
+    #[test]
+    fn repeated_history_upsert_keeps_each_source_variant_once() {
+        let history = structured_history();
+        let mut index = build_index(&[], None);
+        upsert_history_source(&mut index, &history);
+        upsert_history_source(&mut index, &history);
+
+        let source_ids: Vec<_> = index
+            .assets
+            .iter()
+            .flat_map(|asset| asset.sources.iter().map(|source| source.id.clone()))
+            .collect();
+        let unique: std::collections::HashSet<_> = source_ids.iter().collect();
+        assert_eq!(source_ids.len(), unique.len());
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -1014,6 +1101,109 @@ pub struct MaterialIndex {
 pub struct MaterialIndexWarning {
     pub history_id: String,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct MaterialQuery {
+    pub keyword: Option<String>,
+    pub category: Option<MaterialCategory>,
+    pub favorite: Option<bool>,
+    pub min_sources: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialListResponse {
+    pub items: Vec<MaterialAsset>,
+    pub total: usize,
+    pub stale: bool,
+    pub warnings: Vec<MaterialIndexWarning>,
+}
+
+pub fn query_index(index: &MaterialIndex, query: &MaterialQuery) -> MaterialListResponse {
+    let keyword = query
+        .keyword
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_lowercase);
+    let mut items: Vec<_> = index
+        .assets
+        .iter()
+        .filter(|asset| asset.user_override.merged_into.is_none())
+        .filter(|asset| query.category.is_none_or(|category| asset.category == category))
+        .filter(|asset| {
+            query
+                .favorite
+                .is_none_or(|favorite| asset.user_override.favorite == favorite)
+        })
+        .filter(|asset| {
+            query
+                .min_sources
+                .is_none_or(|minimum| asset.sources.len() >= minimum)
+        })
+        .filter(|asset| {
+            keyword.as_ref().is_none_or(|keyword| {
+                let mut searchable = vec![
+                    asset.generated_name.as_str(),
+                    asset.generated_explanation.as_str(),
+                    asset.generated_prompt_zh.as_str(),
+                ];
+                searchable.extend(asset.generated_prompt_en.as_deref());
+                searchable.extend(asset.user_override.display_name.as_deref());
+                searchable.extend(asset.user_override.prompt_zh.as_deref());
+                searchable.extend(asset.user_override.prompt_en.as_deref());
+                searchable.extend(asset.generated_aliases.iter().map(String::as_str));
+                searchable.extend(asset.user_override.aliases.iter().map(String::as_str));
+                searchable.extend(asset.sources.iter().flat_map(|source| {
+                    [Some(source.prompt_zh.as_str()), source.prompt_en.as_deref()]
+                        .into_iter()
+                        .flatten()
+                }));
+                searchable
+                    .into_iter()
+                    .any(|value| value.to_lowercase().contains(keyword))
+            })
+        })
+        .cloned()
+        .collect();
+    items.sort_by(|left, right| {
+        right
+            .user_override
+            .favorite
+            .cmp(&left.user_override.favorite)
+            .then(right.updated_at.cmp(&left.updated_at))
+            .then(left.id.cmp(&right.id))
+    });
+    let total = items.len();
+    MaterialListResponse {
+        items,
+        total,
+        stale: false,
+        warnings: index.warnings.clone(),
+    }
+}
+
+pub fn history_assets(index: &MaterialIndex, history_id: &str) -> Vec<MaterialAsset> {
+    let mut items: Vec<_> = index
+        .assets
+        .iter()
+        .filter(|asset| asset.user_override.merged_into.is_none())
+        .filter(|asset| {
+            asset
+                .sources
+                .iter()
+                .any(|source| source.history_id == history_id)
+        })
+        .cloned()
+        .collect();
+    items.sort_by(|left, right| {
+        category_key(left.category)
+            .cmp(category_key(right.category))
+            .then(left.id.cmp(&right.id))
+    });
+    items
 }
 
 const MATERIAL_INDEX_SCHEMA_VERSION: u32 = 1;
@@ -1751,4 +1941,48 @@ pub fn ensure_index(history: &[HistoryItem]) -> Result<MaterialIndex, AnyError> 
 pub fn rebuild_index(history: &[HistoryItem]) -> Result<MaterialIndex, AnyError> {
     let _guard = lock_material_index()?;
     rebuild_index_from(history, &materials_index_path(), &materials_index_backup_path())
+}
+
+fn prepare_incremental_sync(previous_history: &[HistoryItem]) -> Result<(), AnyError> {
+    ensure_index(previous_history).map(|_| ())
+}
+
+pub fn sync_history_upserts(
+    previous_history: &[HistoryItem],
+    current_history: &[HistoryItem],
+    items: &[HistoryItem],
+) -> Result<(), AnyError> {
+    prepare_incremental_sync(previous_history)?;
+    let fingerprint = history_fingerprint(current_history);
+    mutate_index(|index| {
+        for item in items {
+            upsert_history_source(index, item);
+        }
+        index.history_fingerprint = fingerprint;
+        index.updated_at = current_timestamp();
+        Ok(())
+    })
+}
+
+pub fn sync_removed_history(
+    previous_history: &[HistoryItem],
+    current_history: &[HistoryItem],
+    ids: &[String],
+) -> Result<(), AnyError> {
+    prepare_incremental_sync(previous_history)?;
+    let fingerprint = history_fingerprint(current_history);
+    mutate_index(|index| {
+        remove_history_sources(index, ids);
+        index.history_fingerprint = fingerprint;
+        index.updated_at = current_timestamp();
+        Ok(())
+    })
+}
+
+pub fn sync_cleared_history(previous_history: &[HistoryItem]) -> Result<(), AnyError> {
+    prepare_incremental_sync(previous_history)?;
+    mutate_index(|index| {
+        clear_generated_sources(index);
+        Ok(())
+    })
 }

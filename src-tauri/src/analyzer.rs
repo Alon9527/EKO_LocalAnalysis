@@ -1,3 +1,4 @@
+use crate::materials;
 use crate::storage::{self, HistoryItem, Settings};
 use crate::AnalysisTask;
 use serde_json::Value;
@@ -49,7 +50,21 @@ pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<Hist
             .as_millis() as u64,
     };
 
+    let previous_history = storage::list_history_items();
     storage::add_history_item(item.clone())?;
+    let current_history = storage::list_history_items();
+    materials::sync_history_upserts(
+        &previous_history,
+        &current_history,
+        std::slice::from_ref(&item),
+    )
+    .map_err(|error| -> Box<dyn std::error::Error + Send + Sync> {
+        std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("History was saved, but materials index sync failed: {error}"),
+        )
+        .into()
+    })?;
 
     Ok(item)
 }
