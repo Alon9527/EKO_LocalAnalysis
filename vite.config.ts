@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import vue from "@vitejs/plugin-vue";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
@@ -13,6 +13,11 @@ export default defineConfig(async () => ({
     },
   },
   clearScreen: false,
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    restoreMocks: true,
+  },
   server: {
     port: 1420,
     strictPort: true,
