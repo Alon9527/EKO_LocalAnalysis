@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 type AnyError = Box<dyn std::error::Error + Send + Sync>;
@@ -865,6 +867,121 @@ mod tests {
             .collect();
         assert!(names.iter().all(|name| !name.contains(".tmp.")));
     }
+
+    #[test]
+    fn merge_rejects_split_assets_and_nested_merge_chains() {
+        let mut history = structured_history();
+        history.reconstructed_prompt.as_mut().unwrap()["entities"][0]["sub_elements"] =
+            serde_json::json!(["\u{5706}\u{5f62}\u{5750}\u{57ab}", "\u{4f11}\u{95f2}\u{6905}", "armrest"]);
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let cushion_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{5706}\u{5f62}\u{5750}\u{57ab}"));
+        let armrest_id = stable_asset_id(MaterialCategory::Element, &normalize_key("armrest"));
+
+        let mut split_index = build_index(&[history.clone()], None);
+        let moved_source = split_index.assets.iter().find(|asset| asset.id == chair_id).unwrap().sources[0].id.clone();
+        let split = split_asset(
+            &mut split_index,
+            &chair_id,
+            &[moved_source],
+            "Chair detail".into(),
+        )
+        .unwrap()
+        .into_iter()
+        .find(|asset| asset.id != chair_id)
+        .unwrap();
+        let before = split_index.clone();
+        assert!(merge_assets(&mut split_index, &[split.id, cushion_id.clone()], None).is_err());
+        assert_eq!(split_index, before);
+
+        let mut nested_index = build_index(&[history], None);
+        merge_assets(
+            &mut nested_index,
+            &[chair_id.clone(), cushion_id],
+            None,
+        )
+        .unwrap();
+        let before = nested_index.clone();
+        assert!(merge_assets(&mut nested_index, &[armrest_id, chair_id], None).is_err());
+        assert_eq!(nested_index, before);
+    }
+
+    #[test]
+    fn incremental_upsert_refreshes_generated_fields_from_newer_sources() {
+        let mut first = structured_history();
+        first.id = "history-a".into();
+        let mut other = first.clone();
+        other.id = "history-b".into();
+        let mut index = build_index(&[first.clone(), other], None);
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let before = index.assets.iter().find(|asset| asset.id == chair_id).unwrap().generated_prompt_en.clone();
+
+        first.created_at = 3000;
+        first.prompt_en = Some("A refreshed caramel leather lounge chair with woven details, eye-level editorial photography.".into());
+        upsert_history_source(&mut index, &first);
+        let refreshed = index.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+        assert_ne!(refreshed.generated_prompt_en, before);
+        assert!(refreshed.generated_prompt_en.as_deref().unwrap_or("").contains("refreshed"));
+    }
+
+    #[test]
+    fn english_only_history_changes_invalidate_the_index_fingerprint() {
+        let (primary, backup) = test_index_paths("english-fingerprint");
+        let first = structured_history();
+        let initial = build_index(&[first.clone()], None);
+        save_index_to(&initial, &primary, &backup).unwrap();
+        let mut changed = first;
+        changed.prompt_en = Some("A refreshed caramel leather lounge chair with woven details, eye-level editorial photography.".into());
+
+        let ensured = ensure_index_from(&[changed], &primary, &backup).unwrap();
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let chair = ensured.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+        assert_ne!(ensured.history_fingerprint, initial.history_fingerprint);
+        assert!(chair.generated_prompt_en.as_deref().unwrap_or("").contains("refreshed"));
+    }
+
+    #[test]
+    fn temporary_paths_are_unique_within_one_process() {
+        let (primary, _) = test_index_paths("unique-temporary-paths");
+        let paths: std::collections::HashSet<_> = (0..1000)
+            .map(|_| temporary_path(&primary, "tmp"))
+            .collect();
+        assert_eq!(paths.len(), 1000);
+    }
+
+    #[test]
+    fn persisted_mutations_serialize_the_complete_transaction() {
+        let (primary, backup) = test_index_paths("serialized-mutations");
+        let index = build_index(&[structured_history()], None);
+        save_index_to(&index, &primary, &backup).unwrap();
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let cushion_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{5706}\u{5f62}\u{5750}\u{57ab}"));
+        let first_primary = primary.clone();
+        let first_backup = backup.clone();
+        let first = std::thread::spawn(move || {
+            mutate_index_from(&first_primary, &first_backup, |index| {
+                apply_patch(index, &chair_id, MaterialPatch { favorite: Some(true), ..MaterialPatch::default() })?;
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                Ok(())
+            })
+            .unwrap();
+        });
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let second_primary = primary.clone();
+        let second_backup = backup.clone();
+        let second = std::thread::spawn(move || {
+            mutate_index_from(&second_primary, &second_backup, |index| {
+                apply_patch(index, &cushion_id, MaterialPatch { display_name: Some("Edited cushion".into()), ..MaterialPatch::default() })?;
+                Ok(())
+            })
+            .unwrap();
+        });
+        first.join().unwrap();
+        second.join().unwrap();
+
+        let loaded = load_index_from(&primary, &backup).unwrap();
+        assert!(loaded.assets.iter().any(|asset| asset.user_override.favorite));
+        assert!(loaded.assets.iter().any(|asset| asset.user_override.display_name.as_deref() == Some("Edited cushion")));
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -884,6 +1001,15 @@ pub struct MaterialIndexWarning {
 }
 
 const MATERIAL_INDEX_SCHEMA_VERSION: u32 = 1;
+static MATERIAL_INDEX_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static TEMPORARY_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+fn lock_material_index() -> Result<MutexGuard<'static, ()>, AnyError> {
+    MATERIAL_INDEX_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| invalid_data("materials index lock is poisoned"))
+}
 
 fn current_timestamp() -> u64 {
     SystemTime::now()
@@ -902,13 +1028,14 @@ fn history_fingerprint(history: &[HistoryItem]) -> String {
                 item.id.as_str(),
                 item.created_at,
                 serde_json::to_string(&item.reconstructed_prompt).unwrap_or_else(|_| "null".into()),
+                item.prompt_en.as_deref().unwrap_or(""),
             )
         })
         .collect();
-    entries.sort_by(|left, right| left.0.cmp(right.0).then(left.1.cmp(&right.1)).then(left.2.cmp(&right.2)));
+    entries.sort_by(|left, right| left.0.cmp(right.0).then(left.1.cmp(&right.1)).then(left.2.cmp(&right.2)).then(left.3.cmp(right.3)));
 
     let mut bytes = Vec::new();
-    for (id, created_at, prompt) in entries {
+    for (id, created_at, prompt, prompt_en) in entries {
         bytes.extend_from_slice(id.len().to_string().as_bytes());
         bytes.push(b':');
         bytes.extend_from_slice(id.as_bytes());
@@ -918,6 +1045,10 @@ fn history_fingerprint(history: &[HistoryItem]) -> String {
         bytes.extend_from_slice(prompt.len().to_string().as_bytes());
         bytes.push(b':');
         bytes.extend_from_slice(prompt.as_bytes());
+        bytes.push(b'|');
+        bytes.extend_from_slice(prompt_en.len().to_string().as_bytes());
+        bytes.push(b':');
+        bytes.extend_from_slice(prompt_en.as_bytes());
         bytes.push(b'\n');
     }
     format!("{:016x}", fnv1a(&bytes))
@@ -959,7 +1090,13 @@ fn load_index_from(primary: &Path, backup: &Path) -> Result<MaterialIndex, AnyEr
 
 fn temporary_path(path: &Path, label: &str) -> PathBuf {
     let name = path.file_name().and_then(|value| value.to_str()).unwrap_or("materials-index.json");
-    path.with_file_name(format!("{name}.{label}.{}.{}", std::process::id(), current_timestamp()))
+    let counter = TEMPORARY_PATH_COUNTER.fetch_add(1, Ordering::Relaxed);
+    path.with_file_name(format!(
+        "{name}.{label}.{}.{}.{}",
+        std::process::id(),
+        current_timestamp(),
+        counter
+    ))
 }
 
 #[cfg(windows)]
@@ -1088,7 +1225,34 @@ fn save_index_to(index: &MaterialIndex, primary: &Path, backup: &Path) -> Result
     Ok(())
 }
 
+fn mutate_index_from<T, F>(
+    primary: &Path,
+    backup: &Path,
+    mutation: F,
+) -> Result<T, AnyError>
+where
+    F: FnOnce(&mut MaterialIndex) -> Result<T, AnyError>,
+{
+    let _guard = lock_material_index()?;
+    let mut index = load_index_from(primary, backup)?;
+    let output = mutation(&mut index)?;
+    save_index_to(&index, primary, backup)?;
+    Ok(output)
+}
+
+pub fn mutate_index<T, F>(mutation: F) -> Result<T, AnyError>
+where
+    F: FnOnce(&mut MaterialIndex) -> Result<T, AnyError>,
+{
+    mutate_index_from(
+        &materials_index_path(),
+        &materials_index_backup_path(),
+        mutation,
+    )
+}
+
 pub fn save_index(index: &MaterialIndex) -> Result<(), AnyError> {
+    let _guard = lock_material_index()?;
     save_index_to(index, &materials_index_path(), &materials_index_backup_path())
 }
 fn is_user_managed(asset: &MaterialAsset) -> bool {
@@ -1191,7 +1355,24 @@ pub fn merge_assets(
     {
         return Err(invalid_data("merged material assets must share a category"));
     }
+    if selected.iter().any(|asset| {
+        asset.user_override.merged_into.is_some()
+            || asset.user_override.split_from.is_some()
+    }) {
+        return Err(invalid_data(
+            "merged material assets cannot already be merged children or split assets",
+        ));
+    }
     let target_id = unique_ids[0].clone();
+    if selected.iter().skip(1).any(|asset| {
+        index.assets.iter().any(|candidate| {
+            candidate.user_override.merged_into.as_deref() == Some(asset.id.as_str())
+        })
+    }) {
+        return Err(invalid_data(
+            "a material asset with merged children can only remain the merge target",
+        ));
+    }
     let now = current_timestamp();
     let mut merged = selected[0].clone();
 
@@ -1243,6 +1424,11 @@ pub fn split_asset(
         .position(|asset| asset.id == id)
         .ok_or_else(|| invalid_data(format!("unknown material asset: {id}")))?;
     let template = index.assets[position].clone();
+    if template.user_override.merged_into.is_some()
+        || template.user_override.split_from.is_some()
+    {
+        return Err(invalid_data("merged children and split assets cannot be split again"));
+    }
     if source_ids
         .iter()
         .any(|source_id| !template.sources.iter().any(|source| &source.id == source_id))
@@ -1354,10 +1540,11 @@ fn sort_sources(sources: &mut Vec<MaterialSourceVariant>) {
 }
 
 fn generated_priority(asset: &MaterialAsset) -> (u64, &str) {
-    (
-        asset.updated_at,
-        asset.sources.first().map(|source| source.id.as_str()).unwrap_or(""),
-    )
+    asset
+        .sources
+        .first()
+        .map(|source| (source.created_at, source.id.as_str()))
+        .unwrap_or((0, ""))
 }
 
 fn merge_candidate(assets: &mut Vec<MaterialAsset>, candidate: MaterialAsset) {
@@ -1517,10 +1704,12 @@ fn ensure_index_from(
     }
 }
 pub fn load_index() -> Result<MaterialIndex, AnyError> {
+    let _guard = lock_material_index()?;
     load_index_from(&materials_index_path(), &materials_index_backup_path())
 }
 
 pub fn ensure_index(history: &[HistoryItem]) -> Result<MaterialIndex, AnyError> {
+    let _guard = lock_material_index()?;
     ensure_index_from(
         history,
         &materials_index_path(),
@@ -1528,5 +1717,6 @@ pub fn ensure_index(history: &[HistoryItem]) -> Result<MaterialIndex, AnyError> 
     )
 }
 pub fn rebuild_index(history: &[HistoryItem]) -> Result<MaterialIndex, AnyError> {
+    let _guard = lock_material_index()?;
     rebuild_index_from(history, &materials_index_path(), &materials_index_backup_path())
 }
