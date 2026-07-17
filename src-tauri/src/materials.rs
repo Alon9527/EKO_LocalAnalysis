@@ -153,25 +153,39 @@ fn push_asset(item: &HistoryItem, category: MaterialCategory, field_path: &str, 
         return;
     }
 
-    let prompt_en = safe_english_clause(item.prompt_en.as_deref(), category, fragment);
+    let asset_id = stable_asset_id(category, &normalized);
+    let source_prompt_en = safe_english_clause(item.prompt_en.as_deref(), category, fragment);
+    let source = MaterialSourceVariant {
+        id: stable_source_id(&item.id, field_path, &normalized),
+        history_id: item.id.clone(),
+        thumbnail_id: item.id.clone(),
+        field_path: field_path.to_string(),
+        prompt_zh: source_prompt_zh.to_string(),
+        prompt_en: source_prompt_en.clone(),
+        created_at: item.created_at,
+    };
+
+    if let Some(existing) = output.iter_mut().find(|asset| asset.category == category && normalize_key(&asset.generated_name) == normalized) {
+        if !existing.sources.iter().any(|candidate| candidate.id == source.id) {
+            existing.sources.push(source);
+        }
+        if existing.generated_prompt_en.is_none() {
+            existing.generated_prompt_en = source_prompt_en;
+        }
+        existing.updated_at = existing.updated_at.max(item.created_at);
+        return;
+    }
+
     output.push(MaterialAsset {
-        id: stable_asset_id(category, &normalized),
+        id: asset_id,
         category,
         generated_name: fragment.trim().to_string(),
         generated_explanation: format!("\u{6765}\u{6e90}\u{5b57}\u{6bb5}\u{ff1a}{field_path}"),
         generated_prompt_zh: fragment.trim().to_string(),
-        generated_prompt_en: prompt_en.clone(),
+        generated_prompt_en: source_prompt_en,
         generated_aliases: Vec::new(),
         user_override: MaterialOverride::default(),
-        sources: vec![MaterialSourceVariant {
-            id: stable_source_id(&item.id, field_path, &normalized),
-            history_id: item.id.clone(),
-            thumbnail_id: item.id.clone(),
-            field_path: field_path.to_string(),
-            prompt_zh: source_prompt_zh.to_string(),
-            prompt_en,
-            created_at: item.created_at,
-        }],
+        sources: vec![source],
         created_at: item.created_at,
         updated_at: item.created_at,
     });
@@ -180,7 +194,7 @@ fn push_asset(item: &HistoryItem, category: MaterialCategory, field_path: &str, 
 fn split_list_like(value: &str) -> Vec<String> {
     let trimmed = value.trim();
     let parts: Vec<_> = trimmed
-        .split(|character| matches!(character, '\u{3001}' | '\u{ff0c}' | ',' | '\u{ff1b}' | ';'))
+        .split(is_list_punctuation)
         .map(str::trim)
         .collect();
 
@@ -191,19 +205,51 @@ fn split_list_like(value: &str) -> Vec<String> {
     }
 }
 
+fn is_list_punctuation(character: char) -> bool {
+    matches!(character, '\u{3001}' | '\u{ff0c}' | ',' | '\u{ff1b}' | ';')
+}
+
+fn tokenize_english(value: &str) -> Vec<String> {
+    value
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect()
+}
+
+fn phrase_spans(tokens: &[String], phrase: &str) -> Vec<(usize, usize)> {
+    let phrase_tokens = tokenize_english(phrase);
+    if phrase_tokens.is_empty() || phrase_tokens.len() > tokens.len() {
+        return Vec::new();
+    }
+
+    tokens
+        .windows(phrase_tokens.len())
+        .enumerate()
+        .filter(|(_, window)| *window == phrase_tokens.as_slice())
+        .map(|(start, _)| (start, start + phrase_tokens.len()))
+        .collect()
+}
+
 fn safe_english_clause(prompt_en: Option<&str>, category: MaterialCategory, chinese_fragment: &str) -> Option<String> {
     let prompt_en = prompt_en?;
-    let aliases = category_aliases(category);
-    let has_mapped_noun = |clause: &str| {
-        aliases.iter().any(|(chinese, english)| chinese_fragment.contains(chinese) && clause.contains(english))
-    };
 
     prompt_en
-        .split(|character| matches!(character, ',' | ';' | '\u{ff0c}' | '\u{ff1b}'))
+        .split(is_list_punctuation)
         .map(str::trim)
         .find(|clause| {
-            let normalized = clause.to_ascii_lowercase();
-            has_mapped_noun(&normalized) && category_cues(category).iter().any(|cue| normalized.contains(cue))
+            let tokens = tokenize_english(clause);
+            let alias_spans: Vec<_> = category_aliases(category)
+                .iter()
+                .filter(|(chinese, _)| chinese_fragment.contains(chinese))
+                .flat_map(|(_, alias)| phrase_spans(&tokens, alias))
+                .collect();
+            let cue_spans: Vec<_> = category_cues(category)
+                .iter()
+                .flat_map(|cue| phrase_spans(&tokens, cue))
+                .collect();
+
+            alias_spans.iter().any(|alias| cue_spans.iter().any(|cue| alias.1 <= cue.0 || cue.1 <= alias.0))
         })
         .filter(|clause| !clause.is_empty())
         .map(str::to_string)
@@ -211,10 +257,10 @@ fn safe_english_clause(prompt_en: Option<&str>, category: MaterialCategory, chin
 
 pub fn normalize_key(value: &str) -> String {
     value
-        .trim_matches(|character: char| character.is_whitespace() || matches!(character, '\u{3001}' | '\u{ff0c}' | ',' | '\u{ff1b}' | ';'))
-        .split_whitespace()
-        .collect::<String>()
-        .to_lowercase()
+        .chars()
+        .filter(|character| !character.is_whitespace() && !is_list_punctuation(*character))
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 fn stable_asset_id(category: MaterialCategory, normalized: &str) -> String {
@@ -246,20 +292,20 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 
 fn category_cues(category: MaterialCategory) -> &'static [&'static str] {
     match category {
-        MaterialCategory::Element => &["chair", "sofa", "table", "lamp", "person"],
-        MaterialCategory::Material => &["leather", "wood", "metal", "fabric", "glass"],
-        MaterialCategory::Color => &["color", "white", "black", "brown", "red", "blue", "green"],
-        MaterialCategory::Lighting => &["light", "lighting", "shadow", "window"],
-        MaterialCategory::Camera => &["lens", "camera", "eye-level", "wide-angle", "telephoto"],
-        MaterialCategory::Composition => &["composition", "framing", "centered", "depth", "focus"],
-        MaterialCategory::Style => &["photography", "render", "illustration", "style", "cinematic"],
-        MaterialCategory::Environment => &["interior", "room", "wall", "floor", "background"],
+        MaterialCategory::Element => &["lounge", "seating", "furniture", "arms"],
+        MaterialCategory::Material => &["texture", "surface", "upholstery", "grain"],
+        MaterialCategory::Color => &["color", "palette", "tone", "hue"],
+        MaterialCategory::Lighting => &["window", "illumination", "source", "shadow"],
+        MaterialCategory::Camera => &["lens", "camera", "shot", "eye-level"],
+        MaterialCategory::Composition => &["composition", "framing", "balance", "focus"],
+        MaterialCategory::Style => &["interior", "commercial", "style", "cinematic"],
+        MaterialCategory::Environment => &["room", "setting", "background", "foreground"],
     }
 }
 
 fn category_aliases(category: MaterialCategory) -> &'static [(&'static str, &'static str)] {
     match category {
-        MaterialCategory::Element => &[("\u{4f11}\u{95f2}\u{6905}", "lounge chair"), ("\u{6905}", "chair"), ("\u{6c99}\u{53d1}", "sofa"), ("\u{684c}", "table"), ("\u{706f}", "lamp")],
+        MaterialCategory::Element => &[("\u{4f11}\u{95f2}\u{6905}", "chair"), ("\u{6905}", "chair"), ("\u{6c99}\u{53d1}", "sofa"), ("\u{684c}", "table"), ("\u{706f}", "lamp")],
         MaterialCategory::Material => &[("\u{76ae}\u{9769}", "leather"), ("\u{6728}", "wood"), ("\u{91d1}\u{5c5e}", "metal"), ("\u{7ec7}\u{7269}", "fabric"), ("\u{73bb}\u{7483}", "glass")],
         MaterialCategory::Color => &[("\u{6696}\u{767d}\u{8272}", "warm white"), ("\u{767d}\u{8272}", "white"), ("\u{80e1}\u{6843}\u{6728}\u{68d5}", "walnut brown"), ("\u{68d5}", "brown")],
         MaterialCategory::Lighting => &[("\u{7a97}", "window"), ("\u{5149}", "light"), ("\u{9634}\u{5f71}", "shadow")],
@@ -282,7 +328,7 @@ mod tests {
             reconstructed_prompt: Some(serde_json::json!({
                 "global_scene": { "art_style": "\u{5546}\u{4e1a}\u{5ba4}\u{5185}\u{6444}\u{5f71}", "atmosphere": "\u{5b89}\u{9759}\u{3001}\u{6e29}\u{6696}", "color_palette": ["\u{80e1}\u{6843}\u{6728}\u{68d5}", "\u{6696}\u{767d}\u{8272}"], "lighting": "\u{5de6}\u{4fa7}\u{7a97}\u{6237}\u{6295}\u{4e0b}\u{67d4}\u{548c}\u{6696}\u{5149}" },
                 "composition": { "camera_angle": "\u{5e73}\u{89c6}", "focal_length": "\u{6807}\u{51c6}\u{955c}\u{5934}", "framing": "\u{4e3b}\u{4f53}\u{5c45}\u{4e2d}", "depth_of_field": "\u{4e2d}\u{7b49}\u{666f}\u{6df1}" },
-                "entities": [{ "label": "\u{4f11}\u{95f2}\u{6905}", "appearance": "\u{7126}\u{7cd6}\u{8272}\u{76ae}\u{9769}\u{ff0c}\u{5f27}\u{5f62}\u{6276}\u{624b}", "sub_elements": ["\u{5706}\u{5f62}\u{5750}\u{57ab}"] }],
+                "entities": [{ "label": "\u{4f11}\u{95f2}\u{6905}", "appearance": "\u{7126}\u{7cd6}\u{8272}\u{76ae}\u{9769}\u{ff0c}\u{5f27}\u{5f62}\u{6276}\u{624b}", "sub_elements": ["\u{5706}\u{5f62}\u{5750}\u{57ab}", "\u{4f11}\u{95f2}\u{6905}"] }],
                 "environment_details": { "foreground": "\u{6df1}\u{8272}\u{8fb9}\u{67dc}", "midground": "\u{4f11}\u{95f2}\u{6905}", "background": "\u{6728}\u{9970}\u{9762}\u{5899}" },
                 "technical_specs": { "texture_fidelity": "\u{7ec6}\u{817b}\u{7684}\u{76ae}\u{9769}\u{7eb9}\u{7406}\u{ff0c}\u{6e05}\u{6670}\u{6728}\u{7eb9}", "render_engine_style": "\u{771f}\u{5b9e}\u{5546}\u{4e1a}\u{6444}\u{5f71}", "vfx": [] }
             })),
@@ -325,5 +371,35 @@ mod tests {
         assert!(chair.generated_prompt_en.as_deref().unwrap_or("").contains("caramel leather lounge chair"));
         let color = assets.iter().find(|a| a.generated_name == "\u{6696}\u{767d}\u{8272}").unwrap();
         assert_eq!(color.generated_prompt_en, None);
+    }
+
+    #[test]
+    fn merges_duplicate_elements_and_preserves_all_source_paths() {
+        let assets = extract_assets(&structured_history());
+        let chairs: Vec<_> = assets
+            .iter()
+            .filter(|asset| asset.category == MaterialCategory::Element && asset.generated_name == "\u{4f11}\u{95f2}\u{6905}")
+            .collect();
+
+        assert_eq!(chairs.len(), 1);
+        let paths: std::collections::HashSet<_> = chairs[0]
+            .sources
+            .iter()
+            .map(|source| source.field_path.as_str())
+            .collect();
+        assert_eq!(paths, std::collections::HashSet::from(["entities[0].label", "entities[0].sub_elements[1]"]));
+    }
+
+    #[test]
+    fn normalization_removes_defined_internal_punctuation_and_whitespace() {
+        assert_eq!(normalize_key(" Warm\u{ff0c} White; "), normalize_key("warm white"));
+        assert_eq!(normalize_key("\u{6696} \u{767d}\u{8272}"), normalize_key("\u{6696}\u{ff0c}\u{767d}\u{ff1b}\u{8272}"));
+        assert_ne!(normalize_key("warm-white"), normalize_key("warm white"));
+    }
+
+    #[test]
+    fn english_matching_rejects_substrings_and_overlapping_alias_cues() {
+        assert_eq!(safe_english_clause(Some("A chairman portrait"), MaterialCategory::Element, "\u{6905}"), None);
+        assert_eq!(safe_english_clause(Some("A chair"), MaterialCategory::Element, "\u{6905}"), None);
     }
 }
