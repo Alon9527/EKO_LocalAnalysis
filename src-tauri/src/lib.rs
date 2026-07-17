@@ -3,6 +3,7 @@ mod analyzer;
 mod exporter;
 mod importer;
 mod bridge;
+mod materials;
 
 use serde::Deserialize;
 use storage::{Settings, HistoryItem, HistoryQuery};

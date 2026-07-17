@@ -1,0 +1,329 @@
+use crate::storage::HistoryItem;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MaterialCategory {
+    Element,
+    Material,
+    Color,
+    Lighting,
+    Camera,
+    Composition,
+    Style,
+    Environment,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialSourceVariant {
+    pub id: String,
+    pub history_id: String,
+    pub thumbnail_id: String,
+    pub field_path: String,
+    pub prompt_zh: String,
+    pub prompt_en: Option<String>,
+    pub created_at: u64,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialOverride {
+    pub display_name: Option<String>,
+    pub prompt_zh: Option<String>,
+    pub prompt_en: Option<String>,
+    pub aliases: Vec<String>,
+    pub favorite: bool,
+    pub manually_edited: bool,
+    pub merged_into: Option<String>,
+    pub split_from: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialAsset {
+    pub id: String,
+    pub category: MaterialCategory,
+    pub generated_name: String,
+    pub generated_explanation: String,
+    pub generated_prompt_zh: String,
+    pub generated_prompt_en: Option<String>,
+    pub generated_aliases: Vec<String>,
+    pub user_override: MaterialOverride,
+    pub sources: Vec<MaterialSourceVariant>,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+pub fn extract_assets(item: &HistoryItem) -> Vec<MaterialAsset> {
+    let Some(root) = item.reconstructed_prompt.as_ref() else {
+        return Vec::new();
+    };
+
+    let mut output = Vec::new();
+    extract_entities(item, root, &mut output);
+    extract_scene(item, root, &mut output);
+    extract_composition(item, root, &mut output);
+    extract_environment(item, root, &mut output);
+    extract_technical(item, root, &mut output);
+    output
+}
+
+fn extract_entities(item: &HistoryItem, root: &Value, output: &mut Vec<MaterialAsset>) {
+    let Some(entities) = root.get("entities").and_then(Value::as_array) else {
+        return;
+    };
+
+    for (index, entity) in entities.iter().enumerate() {
+        let prefix = format!("entities[{index}]");
+        extract_value(item, MaterialCategory::Element, &format!("{prefix}.label"), entity.get("label"), output);
+        extract_value(item, MaterialCategory::Material, &format!("{prefix}.appearance"), entity.get("appearance"), output);
+        extract_value(item, MaterialCategory::Element, &format!("{prefix}.sub_elements"), entity.get("sub_elements"), output);
+    }
+}
+
+fn extract_scene(item: &HistoryItem, root: &Value, output: &mut Vec<MaterialAsset>) {
+    let Some(scene) = root.get("global_scene") else {
+        return;
+    };
+
+    extract_value(item, MaterialCategory::Style, "global_scene.art_style", scene.get("art_style"), output);
+    extract_value(item, MaterialCategory::Style, "global_scene.atmosphere", scene.get("atmosphere"), output);
+    extract_value(item, MaterialCategory::Color, "global_scene.color_palette", scene.get("color_palette"), output);
+    extract_value(item, MaterialCategory::Lighting, "global_scene.lighting", scene.get("lighting"), output);
+}
+
+fn extract_composition(item: &HistoryItem, root: &Value, output: &mut Vec<MaterialAsset>) {
+    let Some(composition) = root.get("composition") else {
+        return;
+    };
+
+    extract_value(item, MaterialCategory::Camera, "composition.camera_angle", composition.get("camera_angle"), output);
+    extract_value(item, MaterialCategory::Camera, "composition.focal_length", composition.get("focal_length"), output);
+    extract_value(item, MaterialCategory::Composition, "composition.framing", composition.get("framing"), output);
+    extract_value(item, MaterialCategory::Composition, "composition.depth_of_field", composition.get("depth_of_field"), output);
+}
+
+fn extract_environment(item: &HistoryItem, root: &Value, output: &mut Vec<MaterialAsset>) {
+    let Some(environment) = root.get("environment_details") else {
+        return;
+    };
+
+    extract_value(item, MaterialCategory::Environment, "environment_details.foreground", environment.get("foreground"), output);
+    extract_value(item, MaterialCategory::Environment, "environment_details.midground", environment.get("midground"), output);
+    extract_value(item, MaterialCategory::Environment, "environment_details.background", environment.get("background"), output);
+}
+
+fn extract_technical(item: &HistoryItem, root: &Value, output: &mut Vec<MaterialAsset>) {
+    let Some(technical) = root.get("technical_specs") else {
+        return;
+    };
+
+    extract_value(item, MaterialCategory::Material, "technical_specs.texture_fidelity", technical.get("texture_fidelity"), output);
+    extract_value(item, MaterialCategory::Style, "technical_specs.render_engine_style", technical.get("render_engine_style"), output);
+    extract_value(item, MaterialCategory::Style, "technical_specs.vfx", technical.get("vfx"), output);
+}
+
+fn extract_value(item: &HistoryItem, category: MaterialCategory, field_path: &str, value: Option<&Value>, output: &mut Vec<MaterialAsset>) {
+    let Some(value) = value else {
+        return;
+    };
+
+    match value {
+        Value::String(text) => {
+            for fragment in split_list_like(text) {
+                push_asset(item, category, field_path, &fragment, text, output);
+            }
+        }
+        Value::Array(values) => {
+            for (index, value) in values.iter().enumerate() {
+                if let Some(text) = value.as_str() {
+                    push_asset(item, category, &format!("{field_path}[{index}]"), text.trim(), text, output);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn push_asset(item: &HistoryItem, category: MaterialCategory, field_path: &str, fragment: &str, source_prompt_zh: &str, output: &mut Vec<MaterialAsset>) {
+    let normalized = normalize_key(fragment);
+    if normalized.is_empty() {
+        return;
+    }
+
+    let prompt_en = safe_english_clause(item.prompt_en.as_deref(), category, fragment);
+    output.push(MaterialAsset {
+        id: stable_asset_id(category, &normalized),
+        category,
+        generated_name: fragment.trim().to_string(),
+        generated_explanation: format!("\u{6765}\u{6e90}\u{5b57}\u{6bb5}\u{ff1a}{field_path}"),
+        generated_prompt_zh: fragment.trim().to_string(),
+        generated_prompt_en: prompt_en.clone(),
+        generated_aliases: Vec::new(),
+        user_override: MaterialOverride::default(),
+        sources: vec![MaterialSourceVariant {
+            id: stable_source_id(&item.id, field_path, &normalized),
+            history_id: item.id.clone(),
+            thumbnail_id: item.id.clone(),
+            field_path: field_path.to_string(),
+            prompt_zh: source_prompt_zh.to_string(),
+            prompt_en,
+            created_at: item.created_at,
+        }],
+        created_at: item.created_at,
+        updated_at: item.created_at,
+    });
+}
+
+fn split_list_like(value: &str) -> Vec<String> {
+    let trimmed = value.trim();
+    let parts: Vec<_> = trimmed
+        .split(|character| matches!(character, '\u{3001}' | '\u{ff0c}' | ',' | '\u{ff1b}' | ';'))
+        .map(str::trim)
+        .collect();
+
+    if parts.len() > 1 && parts.iter().all(|part| !part.is_empty()) {
+        parts.into_iter().map(str::to_string).collect()
+    } else {
+        vec![trimmed.to_string()]
+    }
+}
+
+fn safe_english_clause(prompt_en: Option<&str>, category: MaterialCategory, chinese_fragment: &str) -> Option<String> {
+    let prompt_en = prompt_en?;
+    let aliases = category_aliases(category);
+    let has_mapped_noun = |clause: &str| {
+        aliases.iter().any(|(chinese, english)| chinese_fragment.contains(chinese) && clause.contains(english))
+    };
+
+    prompt_en
+        .split(|character| matches!(character, ',' | ';' | '\u{ff0c}' | '\u{ff1b}'))
+        .map(str::trim)
+        .find(|clause| {
+            let normalized = clause.to_ascii_lowercase();
+            has_mapped_noun(&normalized) && category_cues(category).iter().any(|cue| normalized.contains(cue))
+        })
+        .filter(|clause| !clause.is_empty())
+        .map(str::to_string)
+}
+
+pub fn normalize_key(value: &str) -> String {
+    value
+        .trim_matches(|character: char| character.is_whitespace() || matches!(character, '\u{3001}' | '\u{ff0c}' | ',' | '\u{ff1b}' | ';'))
+        .split_whitespace()
+        .collect::<String>()
+        .to_lowercase()
+}
+
+fn stable_asset_id(category: MaterialCategory, normalized: &str) -> String {
+    format!("{}-{:016x}", category_key(category), fnv1a(normalized.as_bytes()))
+}
+
+fn stable_source_id(history_id: &str, field_path: &str, normalized: &str) -> String {
+    format!("source-{:016x}", fnv1a(format!("{history_id}|{field_path}|{normalized}").as_bytes()))
+}
+
+fn category_key(category: MaterialCategory) -> &'static str {
+    match category {
+        MaterialCategory::Element => "element",
+        MaterialCategory::Material => "material",
+        MaterialCategory::Color => "color",
+        MaterialCategory::Lighting => "lighting",
+        MaterialCategory::Camera => "camera",
+        MaterialCategory::Composition => "composition",
+        MaterialCategory::Style => "style",
+        MaterialCategory::Environment => "environment",
+    }
+}
+
+fn fnv1a(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf29ce484222325, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+    })
+}
+
+fn category_cues(category: MaterialCategory) -> &'static [&'static str] {
+    match category {
+        MaterialCategory::Element => &["chair", "sofa", "table", "lamp", "person"],
+        MaterialCategory::Material => &["leather", "wood", "metal", "fabric", "glass"],
+        MaterialCategory::Color => &["color", "white", "black", "brown", "red", "blue", "green"],
+        MaterialCategory::Lighting => &["light", "lighting", "shadow", "window"],
+        MaterialCategory::Camera => &["lens", "camera", "eye-level", "wide-angle", "telephoto"],
+        MaterialCategory::Composition => &["composition", "framing", "centered", "depth", "focus"],
+        MaterialCategory::Style => &["photography", "render", "illustration", "style", "cinematic"],
+        MaterialCategory::Environment => &["interior", "room", "wall", "floor", "background"],
+    }
+}
+
+fn category_aliases(category: MaterialCategory) -> &'static [(&'static str, &'static str)] {
+    match category {
+        MaterialCategory::Element => &[("\u{4f11}\u{95f2}\u{6905}", "lounge chair"), ("\u{6905}", "chair"), ("\u{6c99}\u{53d1}", "sofa"), ("\u{684c}", "table"), ("\u{706f}", "lamp")],
+        MaterialCategory::Material => &[("\u{76ae}\u{9769}", "leather"), ("\u{6728}", "wood"), ("\u{91d1}\u{5c5e}", "metal"), ("\u{7ec7}\u{7269}", "fabric"), ("\u{73bb}\u{7483}", "glass")],
+        MaterialCategory::Color => &[("\u{6696}\u{767d}\u{8272}", "warm white"), ("\u{767d}\u{8272}", "white"), ("\u{80e1}\u{6843}\u{6728}\u{68d5}", "walnut brown"), ("\u{68d5}", "brown")],
+        MaterialCategory::Lighting => &[("\u{7a97}", "window"), ("\u{5149}", "light"), ("\u{9634}\u{5f71}", "shadow")],
+        MaterialCategory::Camera => &[("\u{5e73}\u{89c6}", "eye-level"), ("\u{6807}\u{51c6}\u{955c}\u{5934}", "standard-lens"), ("\u{5e7f}\u{89d2}", "wide-angle"), ("\u{957f}\u{7126}", "telephoto")],
+        MaterialCategory::Composition => &[("\u{5c45}\u{4e2d}", "centered"), ("\u{666f}\u{6df1}", "depth"), ("\u{7126}\u{70b9}", "focus")],
+        MaterialCategory::Style => &[("\u{6444}\u{5f71}", "photography"), ("\u{6e32}\u{67d3}", "render"), ("\u{63d2}\u{753b}", "illustration"), ("\u{7535}\u{5f71}\u{611f}", "cinematic")],
+        MaterialCategory::Environment => &[("\u{5ba4}\u{5185}", "interior"), ("\u{5899}", "wall"), ("\u{5730}\u{9762}", "floor"), ("\u{80cc}\u{666f}", "background")],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::storage::HistoryItem;
+    use super::*;
+
+    fn structured_history() -> HistoryItem {
+        HistoryItem {
+            id: "history-1".into(), file_name: "chair.jpg".into(), file_path: String::new(), image_url: String::new(), source_type: "file".into(),
+            aspect_ratio: Some("4:3".into()), contains_people: Some(false),
+            reconstructed_prompt: Some(serde_json::json!({
+                "global_scene": { "art_style": "\u{5546}\u{4e1a}\u{5ba4}\u{5185}\u{6444}\u{5f71}", "atmosphere": "\u{5b89}\u{9759}\u{3001}\u{6e29}\u{6696}", "color_palette": ["\u{80e1}\u{6843}\u{6728}\u{68d5}", "\u{6696}\u{767d}\u{8272}"], "lighting": "\u{5de6}\u{4fa7}\u{7a97}\u{6237}\u{6295}\u{4e0b}\u{67d4}\u{548c}\u{6696}\u{5149}" },
+                "composition": { "camera_angle": "\u{5e73}\u{89c6}", "focal_length": "\u{6807}\u{51c6}\u{955c}\u{5934}", "framing": "\u{4e3b}\u{4f53}\u{5c45}\u{4e2d}", "depth_of_field": "\u{4e2d}\u{7b49}\u{666f}\u{6df1}" },
+                "entities": [{ "label": "\u{4f11}\u{95f2}\u{6905}", "appearance": "\u{7126}\u{7cd6}\u{8272}\u{76ae}\u{9769}\u{ff0c}\u{5f27}\u{5f62}\u{6276}\u{624b}", "sub_elements": ["\u{5706}\u{5f62}\u{5750}\u{57ab}"] }],
+                "environment_details": { "foreground": "\u{6df1}\u{8272}\u{8fb9}\u{67dc}", "midground": "\u{4f11}\u{95f2}\u{6905}", "background": "\u{6728}\u{9970}\u{9762}\u{5899}" },
+                "technical_specs": { "texture_fidelity": "\u{7ec6}\u{817b}\u{7684}\u{76ae}\u{9769}\u{7eb9}\u{7406}\u{ff0c}\u{6e05}\u{6670}\u{6728}\u{7eb9}", "render_engine_style": "\u{771f}\u{5b9e}\u{5546}\u{4e1a}\u{6444}\u{5f71}", "vfx": [] }
+            })),
+            reconstructed_prompt_zh: None, quality_notes: None,
+            prompt_en: Some("A caramel leather lounge chair with curved arms, warm window light, eye-level standard-lens interior photography.".into()),
+            prompt_zh: Some("\u{7126}\u{7cd6}\u{8272}\u{76ae}\u{9769}\u{4f11}\u{95f2}\u{6905}\u{ff0c}\u{5f27}\u{5f62}\u{6276}\u{624b}\u{ff0c}\u{6696}\u{8272}\u{7a97}\u{5149}\u{ff0c}\u{5e73}\u{89c6}\u{6807}\u{51c6}\u{955c}\u{5934}\u{5ba4}\u{5185}\u{6444}\u{5f71}\u{3002}".into()),
+            quality_score: 84, quality_label: "\u{8f83}\u{5f3a}".into(), quality_breakdown: serde_json::json!({}), quality_warnings: vec![],
+            model: "gpt-5.4".into(), provider: "openai-compatible".into(), elapsed_ms: 100, favorite: false, created_at: 1000,
+        }
+    }
+
+    #[test]
+    fn extracts_all_supported_categories_with_source_paths() {
+        let assets = extract_assets(&structured_history());
+        let categories = assets.iter().map(|a| a.category).collect::<std::collections::HashSet<_>>();
+        assert_eq!(categories.len(), 8);
+        assert!(assets.iter().any(|a| a.category == MaterialCategory::Element && a.generated_name == "\u{4f11}\u{95f2}\u{6905}"));
+        assert!(assets.iter().any(|a| a.category == MaterialCategory::Material));
+        assert!(assets.iter().all(|a| a.sources.iter().all(|s| s.history_id == "history-1")));
+        assert!(assets.iter().any(|a| a.sources.iter().any(|s| s.field_path == "entities[0].label")));
+    }
+
+    #[test]
+    fn normalization_merges_exact_values_but_not_fuzzy_values() {
+        assert_eq!(normalize_key("  \u{6696}\u{767d}\u{8272}\u{ff0c} "), normalize_key("\u{6696}\u{767d}\u{8272}"));
+        assert_ne!(normalize_key("\u{6696}\u{767d}\u{8272}"), normalize_key("\u{7c73}\u{767d}\u{8272}"));
+    }
+
+    #[test]
+    fn full_prompt_only_history_produces_no_assets() {
+        let mut item = structured_history();
+        item.reconstructed_prompt = None;
+        assert!(extract_assets(&item).is_empty());
+    }
+
+    #[test]
+    fn english_fragment_is_kept_only_for_a_safe_clause_match() {
+        let assets = extract_assets(&structured_history());
+        let chair = assets.iter().find(|a| a.generated_name == "\u{4f11}\u{95f2}\u{6905}").unwrap();
+        assert!(chair.generated_prompt_en.as_deref().unwrap_or("").contains("caramel leather lounge chair"));
+        let color = assets.iter().find(|a| a.generated_name == "\u{6696}\u{767d}\u{8272}").unwrap();
+        assert_eq!(color.generated_prompt_en, None);
+    }
+}
