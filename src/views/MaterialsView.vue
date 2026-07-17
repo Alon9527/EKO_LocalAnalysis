@@ -320,6 +320,7 @@ async function rebuildIndex() {
   align-items: center;
   gap: 8px;
   padding: 0 10px;
+  min-width: 180px;
   color: rgba(255, 255, 255, 0.38);
 }
 
@@ -339,11 +340,13 @@ async function rebuildIndex() {
 .compact-check,
 .select-field {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
   padding: 0 10px;
   color: rgba(255, 255, 255, 0.58);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .compact-check input {
@@ -362,6 +365,7 @@ async function rebuildIndex() {
 
 .library-menu {
   position: relative;
+  flex: 0 0 auto;
 }
 
 .icon-tool {
@@ -531,7 +535,7 @@ async function rebuildIndex() {
   to { background-position: -120% 0; }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1120px) {
   .materials-toolbar {
     grid-template-columns: 1fr;
   }
