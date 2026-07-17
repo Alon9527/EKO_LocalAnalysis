@@ -231,6 +231,42 @@ fn phrase_spans(tokens: &[String], phrase: &str) -> Vec<(usize, usize)> {
         .collect()
 }
 
+fn unambiguous_alias_phrase(phrases: Vec<&'static str>) -> Vec<&'static str> {
+    let Some(first) = phrases.first().copied() else {
+        return Vec::new();
+    };
+
+    if phrases.iter().all(|phrase| *phrase == first) {
+        vec![first]
+    } else {
+        Vec::new()
+    }
+}
+
+fn safe_chinese_alias_phrases(category: MaterialCategory, chinese_fragment: &str) -> Vec<&'static str> {
+    let fragment = chinese_fragment.trim();
+    let aliases = category_aliases(category);
+    let exact: Vec<_> = aliases
+        .iter()
+        .filter(|(chinese, _)| fragment == *chinese)
+        .map(|(_, english)| *english)
+        .collect();
+    if !exact.is_empty() {
+        return unambiguous_alias_phrase(exact);
+    }
+
+    let longest_length = aliases
+        .iter()
+        .filter(|(chinese, _)| chinese.chars().count() >= 2 && fragment.contains(chinese))
+        .map(|(chinese, _)| chinese.chars().count())
+        .max();
+    let Some(longest_length) = longest_length else {
+        return Vec::new();
+    };
+
+    unambiguous_alias_phrase(aliases.iter().filter(|(chinese, _)| chinese.chars().count() == longest_length && fragment.contains(chinese)).map(|(_, english)| *english).collect())
+}
+
 fn safe_english_clause(prompt_en: Option<&str>, category: MaterialCategory, chinese_fragment: &str) -> Option<String> {
     let prompt_en = prompt_en?;
 
@@ -239,10 +275,8 @@ fn safe_english_clause(prompt_en: Option<&str>, category: MaterialCategory, chin
         .map(str::trim)
         .find(|clause| {
             let tokens = tokenize_english(clause);
-            let alias_spans: Vec<_> = category_aliases(category)
-                .iter()
-                .filter(|(chinese, _)| chinese_fragment.contains(chinese))
-                .flat_map(|(_, alias)| phrase_spans(&tokens, alias))
+            let alias_spans: Vec<_> = safe_chinese_alias_phrases(category, chinese_fragment)
+                .into_iter().flat_map(|alias| phrase_spans(&tokens, alias))
                 .collect();
             let cue_spans: Vec<_> = category_cues(category)
                 .iter()
@@ -401,5 +435,23 @@ mod tests {
     fn english_matching_rejects_substrings_and_overlapping_alias_cues() {
         assert_eq!(safe_english_clause(Some("A chairman portrait"), MaterialCategory::Element, "\u{6905}"), None);
         assert_eq!(safe_english_clause(Some("A chair"), MaterialCategory::Element, "\u{6905}"), None);
+    }
+
+    #[test]
+    fn chinese_alias_matching_rejects_short_aliases_embedded_in_larger_fragments() {
+        assert_eq!(safe_english_clause(Some("A table furniture piece"), MaterialCategory::Element, "\u{684c}\u{9762}"), None);
+    }
+
+    #[test]
+    fn chinese_alias_matching_accepts_an_exact_short_alias() {
+        assert_eq!(
+            safe_english_clause(Some("A table furniture piece"), MaterialCategory::Element, "\u{684c}"),
+            Some("A table furniture piece".to_string())
+        );
+    }
+
+    #[test]
+    fn chinese_alias_matching_rejects_ambiguous_longest_matches() {
+        assert_eq!(safe_english_clause(Some("Leather and metal texture"), MaterialCategory::Material, "\u{76ae}\u{9769}\u{91d1}\u{5c5e}"), None);
     }
 }
