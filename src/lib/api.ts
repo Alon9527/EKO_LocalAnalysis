@@ -60,7 +60,86 @@ export interface ImportSummary {
   total: number;
 }
 
+export type MaterialCategory =
+  | "element"
+  | "material"
+  | "color"
+  | "lighting"
+  | "camera"
+  | "composition"
+  | "style"
+  | "environment";
+
+export interface MaterialSourceVariant {
+  id: string;
+  historyId: string;
+  thumbnailId: string;
+  fieldPath: string;
+  promptZh: string;
+  promptEn?: string;
+  createdAt: number;
+}
+
+export interface MaterialOverride {
+  displayName?: string;
+  promptZh?: string;
+  promptEn?: string;
+  aliases: string[];
+  favorite: boolean;
+  manuallyEdited: boolean;
+  mergedInto?: string;
+  splitFrom?: string;
+  splitSourceIds?: string[];
+}
+
+export interface MaterialAsset {
+  id: string;
+  category: MaterialCategory;
+  generatedName: string;
+  generatedExplanation: string;
+  generatedPromptZh: string;
+  generatedPromptEn?: string;
+  generatedAliases: string[];
+  userOverride: MaterialOverride;
+  sources: MaterialSourceVariant[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MaterialIndexWarning {
+  historyId: string;
+  message: string;
+}
+
+export interface MaterialQuery {
+  keyword?: string;
+  category?: MaterialCategory;
+  favorite?: boolean;
+  minSources?: number;
+}
+
+export interface MaterialPatch {
+  displayName?: string;
+  promptZh?: string;
+  promptEn?: string;
+  aliases?: string[];
+  favorite?: boolean;
+}
+
+export interface MaterialListResponse {
+  items: MaterialAsset[];
+  total: number;
+  stale: boolean;
+  warnings: MaterialIndexWarning[];
+}
+
 const isTauri = typeof window !== "undefined" && !!(window as any).__TAURI_INTERNALS__;
+const EMPTY_MATERIAL_RESPONSE: MaterialListResponse = {
+  items: [],
+  total: 0,
+  stale: false,
+  warnings: [],
+};
 
 const DEFAULT_SETTINGS: Settings = {
   providerType: "gemini-native",
@@ -156,6 +235,44 @@ export const api = {
   async importItems(inputPath: string): Promise<ImportSummary> {
     if (!isTauri) browserUnsupported("导入结果");
     return invokeTauri<ImportSummary>("import_items", { inputPath });
+  },
+
+  async listMaterials(query: MaterialQuery): Promise<MaterialListResponse> {
+    if (!isTauri) return { ...EMPTY_MATERIAL_RESPONSE, items: [], warnings: [] };
+    return invokeTauri<MaterialListResponse>("list_materials", { query });
+  },
+
+  async getHistoryMaterials(historyId: string): Promise<MaterialAsset[]> {
+    if (!isTauri) return [];
+    return invokeTauri<MaterialAsset[]>("get_history_materials", { historyId });
+  },
+
+  async rebuildMaterialIndex(): Promise<MaterialListResponse> {
+    if (!isTauri) return { ...EMPTY_MATERIAL_RESPONSE, items: [], warnings: [] };
+    return invokeTauri<MaterialListResponse>("rebuild_material_index");
+  },
+
+  async updateMaterial(id: string, patch: MaterialPatch): Promise<MaterialAsset> {
+    if (!isTauri) browserUnsupported("Update material");
+    return invokeTauri<MaterialAsset>("update_material", { id, patch });
+  },
+
+  async mergeMaterials(ids: string[], displayName?: string): Promise<MaterialAsset> {
+    if (!isTauri) browserUnsupported("Merge materials");
+    return invokeTauri<MaterialAsset>("merge_materials", { ids, displayName });
+  },
+
+  async splitMaterial(
+    id: string,
+    sourceIds: string[],
+    displayName: string,
+  ): Promise<MaterialAsset[]> {
+    if (!isTauri) browserUnsupported("Split material");
+    return invokeTauri<MaterialAsset[]>("split_material", {
+      id,
+      sourceIds,
+      displayName,
+    });
   },
 
   async readFileAsDataUrl(filePath: string): Promise<string> {
