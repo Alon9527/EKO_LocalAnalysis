@@ -99,6 +99,44 @@ describe("materials store", () => {
     expect(store.historyItems["history-1"]).toEqual([item]);
   });
 
+  it("loads unfiltered same-category candidates for merge", async () => {
+    const chair = asset("chair", "Chair");
+    const table = asset("table", "Table");
+    const list = vi.spyOn(api, "listMaterials").mockResolvedValue(response([chair, table]));
+    const store = useMaterialsStore();
+    store.keyword = "chair";
+    store.favoriteOnly = true;
+
+    await store.loadMergeCandidates("element");
+
+    expect(list).toHaveBeenCalledWith({ category: "element" });
+    expect(store.mergeCandidates).toEqual([chair, table]);
+  });
+
+  it("does not disturb a detail opened while a card favorite request is pending", async () => {
+    let resolveUpdate!: (value: MaterialAsset) => void;
+    const favoriteTarget = asset("favorite-target", "Favorite target");
+    const openedLater = asset("opened-later", "Opened later");
+    const updated = {
+      ...favoriteTarget,
+      userOverride: { ...favoriteTarget.userOverride, favorite: true },
+    };
+    vi.spyOn(api, "updateMaterial").mockImplementation(
+      () => new Promise((resolve) => { resolveUpdate = resolve; }),
+    );
+    vi.spyOn(api, "listMaterials").mockResolvedValue(response([updated, openedLater]));
+    const store = useMaterialsStore();
+    store.items = [favoriteTarget, openedLater];
+
+    const pending = store.setAssetFavorite(favoriteTarget.id, true);
+    store.openAsset(openedLater.id);
+    resolveUpdate(updated);
+    await pending;
+
+    expect(api.updateMaterial).toHaveBeenCalledWith(favoriteTarget.id, { favorite: true });
+    expect(store.selectedAsset?.id).toBe(openedLater.id);
+  });
+
   it("refreshes the selected asset and list after saving", async () => {
     const original = asset();
     const updated = {

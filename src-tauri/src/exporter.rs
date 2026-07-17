@@ -5,6 +5,7 @@ use std::io::Write;
 
 pub fn export_items(ids: &[String], format: &str, output_path: &str) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let query = storage::HistoryQuery {
+        id: None,
         keyword: None,
         min_score: None,
         max_score: None,

@@ -128,6 +128,7 @@ pub struct HistoryItem {
 
 #[derive(Debug, Deserialize)]
 pub struct HistoryQuery {
+    pub id: Option<String>,
     pub keyword: Option<String>,
     #[serde(rename = "minScore")]
     pub min_score: Option<u32>,
@@ -172,6 +173,10 @@ pub fn write_thumbnail(id: &str, data: &[u8]) -> Result<(), Box<dyn std::error::
 
 pub fn get_history(query: HistoryQuery) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
     let mut items = read_history();
+
+    if let Some(ref id) = query.id {
+        items.retain(|item| item.id == *id);
+    }
 
     if let Some(ref kw) = query.keyword {
         let kw_lower = kw.to_lowercase();

@@ -7,6 +7,7 @@ const router = createRouter({
     { path: "/single", name: "single", component: () => import("@/views/SingleView.vue") },
     { path: "/batch", name: "batch", component: () => import("@/views/BatchView.vue") },
     { path: "/gallery", name: "gallery", component: () => import("@/views/GalleryView.vue") },
+    { path: "/materials", name: "materials", component: () => import("@/views/MaterialsView.vue") },
     { path: "/export", name: "export", component: () => import("@/views/GalleryView.vue") },
     { path: "/settings", name: "settings", component: () => import("@/views/SettingsView.vue") },
   ],

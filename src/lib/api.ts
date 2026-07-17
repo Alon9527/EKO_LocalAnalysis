@@ -45,6 +45,7 @@ export interface HistoryItem {
 }
 
 export interface HistoryQuery {
+  id?: string;
   keyword?: string;
   minScore?: number;
   maxScore?: number;

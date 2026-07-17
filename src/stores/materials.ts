@@ -18,6 +18,7 @@ export const useMaterialsStore = defineStore("materials", () => {
   const items = ref<MaterialAsset[]>([]);
   const historyItems = ref<Record<string, MaterialAsset[]>>({});
   const selectedAsset = ref<MaterialAsset | null>(null);
+  const mergeCandidates = ref<MaterialAsset[]>([]);
   const keyword = ref("");
   const category = ref<MaterialCategory | "all">("all");
   const favoriteOnly = ref(false);
@@ -27,6 +28,7 @@ export const useMaterialsStore = defineStore("materials", () => {
   const error = ref("");
   const warnings = ref<MaterialIndexWarning[]>([]);
   let latestLoad = 0;
+  let latestCandidateLoad = 0;
 
   function currentQuery(): MaterialQuery {
     const query: MaterialQuery = {};
@@ -64,6 +66,20 @@ export const useMaterialsStore = defineStore("materials", () => {
       error.value = errorText(caught);
     }
   }
+  async function loadMergeCandidates(materialCategory: MaterialCategory) {
+    const requestId = ++latestCandidateLoad;
+    try {
+      const response = await api.listMaterials({ category: materialCategory });
+      if (requestId !== latestCandidateLoad) return;
+      mergeCandidates.value = response.items;
+    } catch {
+      if (requestId !== latestCandidateLoad) return;
+      mergeCandidates.value = items.value.filter(
+        (item) => item.category === materialCategory,
+      );
+    }
+  }
+
 
   function openAsset(id: string) {
     selectedAsset.value = items.value.find((item) => item.id === id) || null;
@@ -79,6 +95,26 @@ export const useMaterialsStore = defineStore("materials", () => {
       const updated = await api.updateMaterial(id, patch);
       await load();
       selectedAsset.value = updated;
+      return updated;
+    } catch (caught) {
+      error.value = errorText(caught);
+      return null;
+    }
+  }
+
+  async function setAssetFavorite(id: string, favorite: boolean) {
+    error.value = "";
+    try {
+      const updated = await api.updateMaterial(id, { favorite });
+      await load();
+      const currentSelection = selectedAsset.value;
+      if (currentSelection?.id === id) {
+        selectedAsset.value = updated;
+      } else if (currentSelection) {
+        selectedAsset.value = items.value.find(
+          (item) => item.id === currentSelection.id,
+        ) || currentSelection;
+      }
       return updated;
     } catch (caught) {
       error.value = errorText(caught);
@@ -143,6 +179,7 @@ export const useMaterialsStore = defineStore("materials", () => {
     favoriteOnly,
     minSources,
     loading,
+    mergeCandidates,
     rebuilding,
     error,
     warnings,
@@ -151,8 +188,10 @@ export const useMaterialsStore = defineStore("materials", () => {
     openAsset,
     closeAsset,
     saveAsset,
+    setAssetFavorite,
     mergeAssets,
     splitAsset,
+    loadMergeCandidates,
     rebuild,
   };
 });

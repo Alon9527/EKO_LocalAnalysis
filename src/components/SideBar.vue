@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from "vue-router";
-import { Picture, Files, Clock, Download, Setting, Refresh } from "@element-plus/icons-vue";
+import { Picture, Files, Clock, Collection, Download, Setting, Refresh } from "@element-plus/icons-vue";
 import { useUpdateStore } from "@/stores/update";
 
 const route = useRoute();
@@ -11,6 +11,7 @@ const navItems = [
   { path: "/single", label: "单图分析", icon: Picture },
   { path: "/batch", label: "批量分析", icon: Files },
   { path: "/gallery", label: "历史记录", icon: Clock },
+  { path: "/materials", label: "素材库", icon: Collection },
   { path: "/export", label: "结果管理", icon: Download },
   { path: "/settings", label: "设置中心", icon: Setting },
 ];

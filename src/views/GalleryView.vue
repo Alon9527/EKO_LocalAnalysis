@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useGalleryStore } from "@/stores/gallery";
 import { api } from "@/lib/api";
 import RadarChart from "@/components/RadarChart.vue";
@@ -12,6 +12,7 @@ import {
 
 const store = useGalleryStore();
 const route = useRoute();
+const router = useRouter();
 const viewMode = ref<"grid" | "list">("grid");
 const modelFilter = ref("");
 const dateFilter = ref("");
@@ -23,7 +24,35 @@ const pageSize = ref(24);
 const importing = ref(false);
 const isExportPage = computed(() => route.path === "/export");
 
-onMounted(() => store.load());
+async function syncHistoryFromRoute(value = route.query.history) {
+  if (typeof value === "string" && value) {
+    await store.openDetail(value);
+  } else if (route.path === "/gallery") {
+    store.closeDetail();
+  }
+}
+
+async function loadGallery() {
+  await store.load();
+  await syncHistoryFromRoute();
+}
+
+onMounted(loadGallery);
+
+watch(() => route.query.history, (historyId) => {
+  void syncHistoryFromRoute(historyId);
+});
+
+async function closeHistoryDetail() {
+  store.closeDetail();
+  if (route.query.history === undefined) return;
+  const { history: _history, ...query } = route.query;
+  await router.replace({ path: route.path, query });
+}
+
+function onDetailVisibilityChange(visible: boolean) {
+  if (!visible) void closeHistoryDetail();
+}
 
 watch(() => store.detailItem?.id, () => {
   promptTab.value = "zh";
@@ -112,7 +141,7 @@ async function deleteDetailItem() {
       confirmButtonClass: "el-button--danger",
     });
     await api.deleteHistory([id]);
-    store.closeDetail();
+    await closeHistoryDetail();
     await store.load();
     ElMessage.success("记录已删除");
   } catch {
@@ -315,11 +344,12 @@ const detailDimensions = (item: any) => {
 
       <!-- Detail Drawer (as side panel) -->
       <el-drawer
-        v-model="store.detailItem"
+        data-testid="history-detail-drawer"
+        :model-value="!!store.detailItem"
         :show-close="false"
         :with-header="false"
         size="520px"
-        :before-close="store.closeDetail"
+        @update:model-value="onDetailVisibilityChange"
       >
         <div v-if="store.detailItem" class="h-full flex flex-col p-5 overflow-y-auto select-text">
           <div class="detail-header mb-4">
@@ -331,7 +361,7 @@ const detailDimensions = (item: any) => {
             <div class="detail-actions"><el-button class="detail-icon-button" circle size="default" :type="store.detailItem.favorite ? 'warning' : 'default'" @click="store.toggleFavorite(store.detailItem.id)">
                 <el-icon><StarFilled v-if="store.detailItem.favorite" /><Star v-else /></el-icon>
               </el-button></div>
-            <el-tooltip content="关闭详情" placement="bottom"><el-button class="detail-close-button" circle size="default" aria-label="关闭详情" @click="store.closeDetail">
+            <el-tooltip content="关闭详情" placement="bottom"><el-button data-testid="close-history-detail" class="detail-close-button" circle size="default" aria-label="关闭详情" @click="closeHistoryDetail">
                 <el-icon><Close /></el-icon>
               </el-button></el-tooltip>
           </div>

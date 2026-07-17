@@ -12,6 +12,7 @@ export const useGalleryStore = defineStore("gallery", () => {
   const loading = ref(false);
 
   const selectedCount = computed(() => selected.value.size);
+  let detailRequestId = 0;
 
   async function load() {
     loading.value = true;
@@ -25,16 +26,7 @@ export const useGalleryStore = defineStore("gallery", () => {
       // Load thumbnails asynchronously. Dragged/pasted images may not have a
       // stable file path, so fall back to the cached thumbnail saved by Tauri.
       for (const item of items.value) {
-        if (item.thumbUrl) continue;
-        if (item.sourceType === "url" && item.imageUrl) {
-          item.thumbUrl = item.imageUrl;
-        } else if (item.filePath) {
-          api.readFileAsDataUrl(item.filePath)
-            .then((url) => { item.thumbUrl = url; })
-            .catch(() => loadCachedThumbnail(item));
-        } else {
-          loadCachedThumbnail(item);
-        }
+        loadThumbnail(item);
       }
     } catch {
       items.value = [];
@@ -64,10 +56,24 @@ export const useGalleryStore = defineStore("gallery", () => {
       .catch(() => {});
   }
 
+  function loadThumbnail(item: HistoryItem) {
+    if (item.thumbUrl) return;
+    if (item.sourceType === "url" && item.imageUrl) {
+      item.thumbUrl = item.imageUrl;
+    } else if (item.filePath) {
+      api.readFileAsDataUrl(item.filePath)
+        .then((url) => { item.thumbUrl = url; })
+        .catch(() => loadCachedThumbnail(item));
+    } else {
+      loadCachedThumbnail(item);
+    }
+  }
+
   async function toggleFavorite(id: string) {
     const newState = await api.toggleFavorite(id);
     const item = items.value.find((i) => i.id === id);
     if (item) item.favorite = newState;
+    if (detailItem.value?.id === id) detailItem.value.favorite = newState;
   }
 
   async function deleteSelected() {
@@ -83,11 +89,25 @@ export const useGalleryStore = defineStore("gallery", () => {
     await load();
   }
 
-  function openDetail(id: string) {
-    detailItem.value = items.value.find((i) => i.id === id) || null;
+  async function openDetail(id: string) {
+    const requestId = ++detailRequestId;
+    let found = items.value.find((item) => item.id === id) || null;
+    if (!found) {
+      try {
+        const data = await api.getHistory({ id, page: 1, pageSize: 1 });
+        found = data.items.find((item) => item.id === id) || null;
+        if (found) loadThumbnail(found);
+      } catch {
+        found = null;
+      }
+    }
+    if (requestId !== detailRequestId) return detailItem.value;
+    detailItem.value = found;
+    return found;
   }
 
   function closeDetail() {
+    detailRequestId += 1;
     detailItem.value = null;
   }
 
