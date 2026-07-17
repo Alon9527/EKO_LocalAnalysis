@@ -10,6 +10,8 @@ fn data_dir() -> PathBuf {
 fn settings_path() -> PathBuf { data_dir().join("settings.json") }
 fn history_path() -> PathBuf { data_dir().join("history.json") }
 pub fn thumbs_dir() -> PathBuf { data_dir().join("thumbnails") }
+pub fn materials_index_path() -> PathBuf { data_dir().join("materials-index.json") }
+pub fn materials_index_backup_path() -> PathBuf { data_dir().join("materials-index.backup.json") }
 
 pub fn ensure_data_dir() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     fs::create_dir_all(data_dir())?;

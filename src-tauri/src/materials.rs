@@ -1,6 +1,11 @@
-use crate::storage::HistoryItem;
+use crate::storage::{materials_index_backup_path, materials_index_path, HistoryItem};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+type AnyError = Box<dyn std::error::Error + Send + Sync>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -40,6 +45,16 @@ pub struct MaterialOverride {
     pub split_from: Option<String>,
 }
 
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialPatch {
+    pub display_name: Option<String>,
+    pub prompt_zh: Option<String>,
+    pub prompt_en: Option<String>,
+    pub aliases: Option<Vec<String>>,
+    pub favorite: Option<bool>,
+}
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct MaterialAsset {
@@ -354,6 +369,24 @@ fn category_aliases(category: MaterialCategory) -> &'static [(&'static str, &'st
 mod tests {
     use crate::storage::HistoryItem;
     use super::*;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn test_index_paths(test_name: &str) -> (PathBuf, PathBuf) {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory = std::env::temp_dir().join(format!(
+            "autoprompt-materials-{test_name}-{}-{unique}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&directory).unwrap();
+        (
+            directory.join("materials-index.json"),
+            directory.join("materials-index.backup.json"),
+        )
+    }
 
     fn structured_history() -> HistoryItem {
         HistoryItem {
@@ -454,4 +487,754 @@ mod tests {
     fn chinese_alias_matching_rejects_ambiguous_longest_matches() {
         assert_eq!(safe_english_clause(Some("Leather and metal texture"), MaterialCategory::Material, "\u{76ae}\u{9769}\u{91d1}\u{5c5e}"), None);
     }
+
+    #[test]
+    fn rebuild_preserves_manual_overrides_and_favorites() {
+        let (primary, backup) = test_index_paths("rebuild-preserves-overrides");
+        let original = structured_history();
+        let mut index = rebuild_index_from(&[original.clone()], &primary, &backup).unwrap();
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let chair = index.assets.iter_mut().find(|asset| asset.id == chair_id).unwrap();
+        chair.user_override.display_name = Some("\u{6211}\u{7684}\u{4f11}\u{95f2}\u{6905}".into());
+        chair.user_override.prompt_zh = Some("\u{4fdd}\u{7559}\u{8fd9}\u{6bb5}\u{624b}\u{52a8}\u{63d0}\u{793a}\u{8bcd}".into());
+        chair.user_override.favorite = true;
+        chair.user_override.manually_edited = true;
+        save_index_to(&index, &primary, &backup).unwrap();
+
+        let mut changed = original;
+        changed.created_at = 2000;
+        changed.reconstructed_prompt.as_mut().unwrap()["entities"][0]["label"] =
+            serde_json::Value::String("\u{4f11} \u{95f2}\u{6905}".into());
+
+        let rebuilt = rebuild_index_from(&[changed], &primary, &backup).unwrap();
+        let chair = rebuilt.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+        assert_eq!(chair.generated_name, "\u{4f11} \u{95f2}\u{6905}");
+        assert_eq!(chair.user_override.display_name.as_deref(), Some("\u{6211}\u{7684}\u{4f11}\u{95f2}\u{6905}"));
+        assert_eq!(chair.user_override.prompt_zh.as_deref(), Some("\u{4fdd}\u{7559}\u{8fd9}\u{6bb5}\u{624b}\u{52a8}\u{63d0}\u{793a}\u{8bcd}"));
+        assert!(chair.user_override.favorite);
+        assert_eq!(load_index_from(&primary, &backup).unwrap(), rebuilt);
+    }
+    #[test]
+    fn exact_assets_merge_sources_across_history_items() {
+        let (primary, backup) = test_index_paths("exact-assets-merge-sources");
+        let first = structured_history();
+        let mut second = structured_history();
+        second.id = "history-2".into();
+        second.created_at = 2000;
+
+        let index = rebuild_index_from(&[first, second], &primary, &backup).unwrap();
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let chairs: Vec<_> = index.assets.iter().filter(|asset| asset.id == chair_id).collect();
+
+        assert_eq!(chairs.len(), 1);
+        assert_eq!(chairs[0].sources.len(), 4);
+        assert_eq!(chairs[0].sources[0].history_id, "history-2");
+        assert!(chairs[0].sources.windows(2).all(|pair| {
+            pair[0].created_at > pair[1].created_at
+                || (pair[0].created_at == pair[1].created_at && pair[0].id <= pair[1].id)
+        }));
+    }
+    #[test]
+    fn deleting_one_history_source_keeps_shared_asset() {
+        let (primary, backup) = test_index_paths("delete-one-shared-source");
+        let first = structured_history();
+        let mut second = structured_history();
+        second.id = "history-2".into();
+        second.created_at = 2000;
+        let mut index = rebuild_index_from(&[first, second], &primary, &backup).unwrap();
+
+        remove_history_sources(&mut index, &["history-2".to_string()]);
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let chair = index.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+
+        assert_eq!(chair.sources.len(), 2);
+        assert!(chair.sources.iter().all(|source| source.history_id == "history-1"));
+    }
+    #[test]
+    fn orphaned_manual_asset_survives_source_deletion() {
+        let (primary, backup) = test_index_paths("orphaned-manual-asset");
+        let mut index = rebuild_index_from(&[structured_history()], &primary, &backup).unwrap();
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+
+        apply_patch(
+            &mut index,
+            &chair_id,
+            MaterialPatch {
+                display_name: Some("\u{4fdd}\u{7559}\u{7684}\u{6905}\u{5b50}".into()),
+                favorite: Some(true),
+                ..MaterialPatch::default()
+            },
+        )
+        .unwrap();
+        remove_history_sources(&mut index, &["history-1".to_string()]);
+
+        let chair = index.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+        assert!(chair.sources.is_empty());
+        assert_eq!(chair.user_override.display_name.as_deref(), Some("\u{4fdd}\u{7559}\u{7684}\u{6905}\u{5b50}"));
+        assert!(chair.user_override.favorite);
+        assert!(chair.user_override.manually_edited);
+    }
+    #[test]
+    fn split_moves_selected_variants_to_a_user_asset() {
+        let (primary, backup) = test_index_paths("split-selected-variants");
+        let mut index = rebuild_index_from(&[structured_history()], &primary, &backup).unwrap();
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let source_ids: Vec<_> = index
+            .assets
+            .iter()
+            .find(|asset| asset.id == chair_id)
+            .unwrap()
+            .sources
+            .iter()
+            .map(|source| source.id.clone())
+            .collect();
+
+        assert!(split_asset(&mut index, &chair_id, &[], "\u{65e0}\u{6548}".into()).is_err());
+        assert!(split_asset(&mut index, &chair_id, &["missing".into()], "\u{65e0}\u{6548}".into()).is_err());
+        assert!(split_asset(&mut index, &chair_id, &source_ids, "\u{65e0}\u{6548}".into()).is_err());
+
+        let changed = split_asset(
+            &mut index,
+            &chair_id,
+            &[source_ids[0].clone()],
+            "\u{6905}\u{80cc}\u{53d8}\u{4f53}".into(),
+        )
+        .unwrap();
+        let original = changed.iter().find(|asset| asset.id == chair_id).unwrap();
+        let split = changed.iter().find(|asset| asset.id != chair_id).unwrap();
+
+        assert_eq!(original.sources.len(), 1);
+        assert_eq!(split.sources.len(), 1);
+        assert_eq!(split.sources[0].id, source_ids[0]);
+        assert_eq!(split.user_override.display_name.as_deref(), Some("\u{6905}\u{80cc}\u{53d8}\u{4f53}"));
+        assert_eq!(split.user_override.split_from.as_deref(), Some(chair_id.as_str()));
+        assert!(split.user_override.manually_edited);
+    }
+
+    #[test]
+    fn merge_assets_rejects_fewer_than_two_ids() {
+        let mut index = build_index(&[structured_history()], None);
+        let only_id = index.assets[0].id.clone();
+        let before = index.clone();
+
+        assert!(merge_assets(&mut index, &[only_id], None).is_err());
+        assert_eq!(index, before);
+    }
+
+    #[test]
+    fn merge_assets_combines_same_category_sources() {
+        let mut index = build_index(&[structured_history()], None);
+        let chair_id =
+            stable_asset_id(MaterialCategory::Element, &normalize_key("休闲椅"));
+        let cushion_id =
+            stable_asset_id(MaterialCategory::Element, &normalize_key("圆形坐垫"));
+
+        let merged = merge_assets(
+            &mut index,
+            &[chair_id.clone(), cushion_id.clone()],
+            Some("Seating".into()),
+        )
+        .unwrap();
+
+        assert_eq!(merged.id, chair_id);
+        assert_eq!(merged.sources.len(), 3);
+        assert_eq!(merged.user_override.display_name.as_deref(), Some("Seating"));
+        assert!(merged.user_override.manually_edited);
+        assert!(merged.sources.windows(2).all(|pair| {
+            pair[0].created_at > pair[1].created_at
+                || (pair[0].created_at == pair[1].created_at && pair[0].id <= pair[1].id)
+        }));
+        let cushion = index.assets.iter().find(|asset| asset.id == cushion_id).unwrap();
+        assert_eq!(cushion.user_override.merged_into.as_deref(), Some(chair_id.as_str()));
+    }
+    #[test]
+    fn merge_assets_rejects_mixed_categories_without_mutation() {
+        let mut index = build_index(&[structured_history()], None);
+        let element_id = index
+            .assets
+            .iter()
+            .find(|asset| asset.category == MaterialCategory::Element)
+            .unwrap()
+            .id
+            .clone();
+        let material_id = index
+            .assets
+            .iter()
+            .find(|asset| asset.category == MaterialCategory::Material)
+            .unwrap()
+            .id
+            .clone();
+        let before = index.clone();
+
+        assert!(merge_assets(&mut index, &[element_id, material_id], None).is_err());
+        assert_eq!(index, before);
+    }
+    #[test]
+    fn merge_assets_rejects_blank_display_name_without_mutation() {
+        let mut index = build_index(&[structured_history()], None);
+        let ids: Vec<_> = index
+            .assets
+            .iter()
+            .filter(|asset| asset.category == MaterialCategory::Element)
+            .take(2)
+            .map(|asset| asset.id.clone())
+            .collect();
+        let before = index.clone();
+
+        assert!(merge_assets(&mut index, &ids, Some("   ".into())).is_err());
+        assert_eq!(index, before);
+    }
+    #[test]
+    fn invalid_primary_index_falls_back_to_last_valid_backup() {
+        let (primary, backup) = test_index_paths("invalid-primary-fallback");
+        let first = build_index(&[structured_history()], None);
+        save_index_to(&first, &primary, &backup).unwrap();
+
+        let mut second_history = structured_history();
+        second_history.id = "history-2".into();
+        let second = build_index(&[second_history], Some(&first));
+        save_index_to(&second, &primary, &backup).unwrap();
+        std::fs::write(&primary, b"not valid json").unwrap();
+
+        let recovered = load_index_from(&primary, &backup).unwrap();
+
+        assert_eq!(recovered.history_fingerprint, first.history_fingerprint);
+        assert_eq!(recovered.assets, first.assets);
+        assert_eq!(recovered.warnings.len(), first.warnings.len() + 1);
+        assert!(recovered.warnings.last().unwrap().message.contains("backup"));
+    }
+    #[test]
+    fn ensure_index_creates_and_persists_a_missing_index() {
+        let (primary, backup) = test_index_paths("ensure-creates-index");
+
+        let ensured =
+            ensure_index_from(&[structured_history()], &primary, &backup).unwrap();
+
+        assert!(primary.exists());
+        assert_eq!(load_index_from(&primary, &backup).unwrap(), ensured);
+    }
+    #[test]
+    fn failed_save_preserves_last_valid_primary_and_backup() {
+        let (primary, backup) = test_index_paths("failed-save-preserves-pair");
+        let first = build_index(&[structured_history()], None);
+        save_index_to(&first, &primary, &backup).unwrap();
+
+        let mut second_history = structured_history();
+        second_history.id = "history-2".into();
+        let second = build_index(&[second_history], Some(&first));
+        save_index_to(&second, &primary, &backup).unwrap();
+        let primary_before = std::fs::read(&primary).unwrap();
+        let backup_before = std::fs::read(&backup).unwrap();
+
+        let mut third_history = structured_history();
+        third_history.id = "history-3".into();
+        let third = build_index(&[third_history], Some(&second));
+        let mut permissions = std::fs::metadata(&primary).unwrap().permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&primary, permissions).unwrap();
+
+        assert!(save_index_to(&third, &primary, &backup).is_err());
+
+        let mut permissions = std::fs::metadata(&primary).unwrap().permissions();
+        permissions.set_readonly(false);
+        std::fs::set_permissions(&primary, permissions).unwrap();
+        assert_eq!(std::fs::read(&primary).unwrap(), primary_before);
+        assert_eq!(std::fs::read(&backup).unwrap(), backup_before);
+    }
+}
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialIndex {
+    pub schema_version: u32,
+    pub history_fingerprint: String,
+    pub assets: Vec<MaterialAsset>,
+    pub warnings: Vec<MaterialIndexWarning>,
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialIndexWarning {
+    pub history_id: String,
+    pub message: String,
+}
+
+const MATERIAL_INDEX_SCHEMA_VERSION: u32 = 1;
+
+fn current_timestamp() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .try_into()
+        .unwrap_or(u64::MAX)
+}
+
+fn history_fingerprint(history: &[HistoryItem]) -> String {
+    let mut entries: Vec<_> = history
+        .iter()
+        .map(|item| {
+            (
+                item.id.as_str(),
+                item.created_at,
+                serde_json::to_string(&item.reconstructed_prompt).unwrap_or_else(|_| "null".into()),
+            )
+        })
+        .collect();
+    entries.sort_by(|left, right| left.0.cmp(right.0).then(left.1.cmp(&right.1)).then(left.2.cmp(&right.2)));
+
+    let mut bytes = Vec::new();
+    for (id, created_at, prompt) in entries {
+        bytes.extend_from_slice(id.len().to_string().as_bytes());
+        bytes.push(b':');
+        bytes.extend_from_slice(id.as_bytes());
+        bytes.push(b'|');
+        bytes.extend_from_slice(created_at.to_string().as_bytes());
+        bytes.push(b'|');
+        bytes.extend_from_slice(prompt.len().to_string().as_bytes());
+        bytes.push(b':');
+        bytes.extend_from_slice(prompt.as_bytes());
+        bytes.push(b'\n');
+    }
+    format!("{:016x}", fnv1a(&bytes))
+}
+
+fn invalid_data(message: impl Into<String>) -> AnyError {
+    std::io::Error::new(std::io::ErrorKind::InvalidData, message.into()).into()
+}
+
+fn parse_index(path: &Path) -> Result<MaterialIndex, AnyError> {
+    let data = fs::read_to_string(path)?;
+    let index: MaterialIndex = serde_json::from_str(&data)?;
+    if index.schema_version != MATERIAL_INDEX_SCHEMA_VERSION {
+        return Err(invalid_data(format!(
+            "unsupported materials index schema version {}",
+            index.schema_version
+        )));
+    }
+    Ok(index)
+}
+
+fn load_index_from(primary: &Path, backup: &Path) -> Result<MaterialIndex, AnyError> {
+    match parse_index(primary) {
+        Ok(index) => Ok(index),
+        Err(primary_error) => {
+            let mut index = parse_index(backup).map_err(|backup_error| {
+                invalid_data(format!(
+                    "failed to load materials index ({primary_error}); backup also failed ({backup_error})"
+                ))
+            })?;
+            index.warnings.push(MaterialIndexWarning {
+                history_id: String::new(),
+                message: format!("Loaded the last valid materials index backup: {primary_error}"),
+            });
+            Ok(index)
+        }
+    }
+}
+
+fn temporary_path(path: &Path, label: &str) -> PathBuf {
+    let name = path.file_name().and_then(|value| value.to_str()).unwrap_or("materials-index.json");
+    path.with_file_name(format!("{name}.{label}.{}.{}", std::process::id(), current_timestamp()))
+}
+
+fn write_validated(index: &MaterialIndex, path: &Path) -> Result<(), AnyError> {
+    fs::write(path, serde_json::to_vec_pretty(index)?)?;
+    parse_index(path)?;
+    Ok(())
+}
+
+fn read_optional_file(path: &Path) -> Result<Option<Vec<u8>>, AnyError> {
+    match fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn restore_file(path: &Path, original: Option<&[u8]>) -> Result<(), AnyError> {
+    match original {
+        Some(bytes) => {
+            if fs::read(path).ok().as_deref() != Some(bytes) {
+                fs::write(path, bytes)?;
+            }
+        }
+        None => match fs::remove_file(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        },
+    }
+    Ok(())
+}
+
+fn save_index_to(index: &MaterialIndex, primary: &Path, backup: &Path) -> Result<(), AnyError> {
+    if let Some(parent) = primary.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    if let Some(parent) = backup.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let primary_before = read_optional_file(primary)?;
+    let backup_before = read_optional_file(backup)?;
+    let previous = parse_index(primary).ok();
+    let new_index_temp = temporary_path(primary, "tmp");
+    if let Err(error) = write_validated(index, &new_index_temp) {
+        let _ = fs::remove_file(&new_index_temp);
+        return Err(error);
+    }
+
+    let backup_temp = previous
+        .as_ref()
+        .map(|_| temporary_path(backup, "tmp"));
+    let result = (|| -> Result<(), AnyError> {
+        if let (Some(previous), Some(backup_temp)) = (previous.as_ref(), backup_temp.as_ref()) {
+            write_validated(previous, backup_temp)?;
+            fs::copy(backup_temp, backup)?;
+            parse_index(backup)?;
+        }
+
+        fs::copy(&new_index_temp, primary)?;
+        parse_index(primary)?;
+        Ok(())
+    })();
+
+    let _ = fs::remove_file(&new_index_temp);
+    if let Some(path) = backup_temp.as_ref() {
+        let _ = fs::remove_file(path);
+    }
+
+    if let Err(error) = result {
+        let primary_restore = restore_file(primary, primary_before.as_deref());
+        let backup_restore = restore_file(backup, backup_before.as_deref());
+        if let Err(restore_error) = primary_restore.and(backup_restore) {
+            return Err(invalid_data(format!(
+                "failed to save materials index ({error}); rollback also failed ({restore_error})"
+            )));
+        }
+        return Err(error);
+    }
+
+    Ok(())
+}
+fn is_user_managed(asset: &MaterialAsset) -> bool {
+    let user = &asset.user_override;
+    user.favorite
+        || user.manually_edited
+        || user.merged_into.is_some()
+        || user.split_from.is_some()
+        || user.display_name.is_some()
+        || user.prompt_zh.is_some()
+        || user.prompt_en.is_some()
+        || !user.aliases.is_empty()
+}
+
+
+
+
+pub fn apply_patch(index: &mut MaterialIndex, id: &str, patch: MaterialPatch) -> Result<MaterialAsset, AnyError> {
+    for (label, value) in [
+        ("display name", patch.display_name.as_deref()),
+        ("Chinese prompt fragment", patch.prompt_zh.as_deref()),
+        ("English prompt fragment", patch.prompt_en.as_deref()),
+    ] {
+        if value.is_some_and(|value| value.trim().is_empty()) {
+            return Err(invalid_data(format!("{label} cannot be blank")));
+        }
+    }
+
+    let asset = index
+        .assets
+        .iter_mut()
+        .find(|asset| asset.id == id)
+        .ok_or_else(|| invalid_data(format!("unknown material asset: {id}")))?;
+    let has_manual_edit = patch.display_name.is_some()
+        || patch.prompt_zh.is_some()
+        || patch.prompt_en.is_some()
+        || patch.aliases.is_some();
+
+    if let Some(value) = patch.display_name {
+        asset.user_override.display_name = Some(value.trim().to_string());
+    }
+    if let Some(value) = patch.prompt_zh {
+        asset.user_override.prompt_zh = Some(value.trim().to_string());
+    }
+    if let Some(value) = patch.prompt_en {
+        asset.user_override.prompt_en = Some(value.trim().to_string());
+    }
+    if let Some(values) = patch.aliases {
+        asset.user_override.aliases = values
+            .into_iter()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .collect();
+    }
+    if let Some(value) = patch.favorite {
+        asset.user_override.favorite = value;
+    }
+    asset.user_override.manually_edited |= has_manual_edit;
+    asset.updated_at = current_timestamp();
+    index.updated_at = asset.updated_at;
+    Ok(asset.clone())
+}
+
+pub fn merge_assets(
+    index: &mut MaterialIndex,
+    ids: &[String],
+    display_name: Option<String>,
+) -> Result<MaterialAsset, AnyError> {
+    if display_name
+        .as_deref()
+        .is_some_and(|value| value.trim().is_empty())
+    {
+        return Err(invalid_data("merge display name cannot be blank"));
+    }
+    let mut unique_ids = Vec::new();
+    for id in ids {
+        if !unique_ids.iter().any(|candidate| candidate == id) {
+            unique_ids.push(id.clone());
+        }
+    }
+    if unique_ids.len() < 2 {
+        return Err(invalid_data("merge requires at least two material assets"));
+    }
+
+    let selected: Vec<_> = unique_ids
+        .iter()
+        .map(|id| {
+            index
+                .assets
+                .iter()
+                .find(|asset| &asset.id == id)
+                .cloned()
+                .ok_or_else(|| invalid_data(format!("unknown material asset: {id}")))
+        })
+        .collect::<Result<_, _>>()?;
+    if selected
+        .iter()
+        .any(|asset| asset.category != selected[0].category)
+    {
+        return Err(invalid_data("merged material assets must share a category"));
+    }
+    let target_id = unique_ids[0].clone();
+    let now = current_timestamp();
+    let mut merged = selected[0].clone();
+
+    for asset in selected.iter().skip(1) {
+        for source in &asset.sources {
+            if !merged.sources.iter().any(|current| current.id == source.id) {
+                merged.sources.push(source.clone());
+            }
+        }
+    }
+    sort_sources(&mut merged.sources);
+    if let Some(value) = display_name {
+        merged.user_override.display_name = Some(value.trim().to_string());
+    }
+    merged.user_override.manually_edited = true;
+    merged.user_override.merged_into = None;
+    merged.updated_at = now;
+
+    for asset in &mut index.assets {
+        if asset.id == target_id {
+            *asset = merged.clone();
+        } else if unique_ids.iter().any(|id| id == &asset.id) {
+            asset.user_override.merged_into = Some(target_id.clone());
+            asset.updated_at = now;
+        }
+    }
+    index.updated_at = now;
+    Ok(merged)
+}
+pub fn split_asset(
+    index: &mut MaterialIndex,
+    id: &str,
+    source_ids: &[String],
+    display_name: String,
+) -> Result<Vec<MaterialAsset>, AnyError> {
+    if display_name.trim().is_empty() {
+        return Err(invalid_data("split display name cannot be blank"));
+    }
+    if source_ids.is_empty() {
+        return Err(invalid_data("split source set cannot be empty"));
+    }
+
+    let position = index
+        .assets
+        .iter()
+        .position(|asset| asset.id == id)
+        .ok_or_else(|| invalid_data(format!("unknown material asset: {id}")))?;
+    let template = index.assets[position].clone();
+    if source_ids
+        .iter()
+        .any(|source_id| !template.sources.iter().any(|source| &source.id == source_id))
+    {
+        return Err(invalid_data("split source set contains an unknown source"));
+    }
+
+    let mut selected: Vec<_> = template
+        .sources
+        .iter()
+        .filter(|source| source_ids.iter().any(|source_id| source_id == &source.id))
+        .cloned()
+        .collect();
+    if selected.len() == template.sources.len() {
+        return Err(invalid_data("split source set cannot include every source"));
+    }
+    sort_sources(&mut selected);
+
+    let mut identity = source_ids.to_vec();
+    identity.sort();
+    identity.dedup();
+    let new_id = format!(
+        "user-{}-{:016x}",
+        category_key(template.category),
+        fnv1a(format!("{}|{}|{}", id, identity.join("|"), display_name.trim()).as_bytes())
+    );
+    if index.assets.iter().any(|asset| asset.id == new_id) {
+        return Err(invalid_data("split asset already exists"));
+    }
+
+    index.assets[position]
+        .sources
+        .retain(|source| !source_ids.iter().any(|source_id| source_id == &source.id));
+    sort_sources(&mut index.assets[position].sources);
+    index.assets[position].updated_at = current_timestamp();
+
+    let now = current_timestamp();
+    let mut split = MaterialAsset {
+        id: new_id,
+        category: template.category,
+        generated_name: template.generated_name,
+        generated_explanation: template.generated_explanation,
+        generated_prompt_zh: template.generated_prompt_zh,
+        generated_prompt_en: template.generated_prompt_en,
+        generated_aliases: template.generated_aliases,
+        user_override: MaterialOverride {
+            display_name: Some(display_name.trim().to_string()),
+            manually_edited: true,
+            split_from: Some(id.to_string()),
+            ..MaterialOverride::default()
+        },
+        created_at: selected.iter().map(|source| source.created_at).min().unwrap_or(now),
+        updated_at: now,
+        sources: selected,
+    };
+    sort_sources(&mut split.sources);
+
+    let original = index.assets[position].clone();
+    index.assets.push(split.clone());
+    index.assets.sort_by(|left, right| left.id.cmp(&right.id));
+    index.updated_at = now;
+    Ok(vec![original, split])
+}
+pub fn remove_history_sources(index: &mut MaterialIndex, ids: &[String]) {
+    for asset in &mut index.assets {
+        asset
+            .sources
+            .retain(|source| !ids.iter().any(|id| id == &source.history_id));
+        sort_sources(&mut asset.sources);
+        asset.updated_at = current_timestamp();
+    }
+    index
+        .assets
+        .retain(|asset| !asset.sources.is_empty() || is_user_managed(asset));
+    index.updated_at = current_timestamp();
+}
+fn sort_sources(sources: &mut Vec<MaterialSourceVariant>) {
+    sources.sort_by(|left, right| {
+        right
+            .created_at
+            .cmp(&left.created_at)
+            .then(left.id.cmp(&right.id))
+    });
+}
+
+fn merge_extracted_assets(history: &[HistoryItem]) -> Vec<MaterialAsset> {
+    let mut assets: Vec<MaterialAsset> = Vec::new();
+    for candidate in history.iter().flat_map(extract_assets) {
+        if let Some(existing) = assets.iter_mut().find(|asset| asset.id == candidate.id) {
+            for source in candidate.sources {
+                if !existing.sources.iter().any(|current| current.id == source.id) {
+                    existing.sources.push(source);
+                }
+            }
+            if candidate.updated_at >= existing.updated_at {
+                existing.generated_name = candidate.generated_name;
+                existing.generated_explanation = candidate.generated_explanation;
+                existing.generated_prompt_zh = candidate.generated_prompt_zh;
+                existing.generated_prompt_en = candidate.generated_prompt_en;
+                existing.generated_aliases = candidate.generated_aliases;
+            }
+            existing.created_at = existing.created_at.min(candidate.created_at);
+            existing.updated_at = existing.updated_at.max(candidate.updated_at);
+        } else {
+            assets.push(candidate);
+        }
+    }
+    for asset in &mut assets {
+        sort_sources(&mut asset.sources);
+    }
+    assets
+}
+fn build_index(history: &[HistoryItem], previous: Option<&MaterialIndex>) -> MaterialIndex {
+    let mut assets = merge_extracted_assets(history);
+    if let Some(previous) = previous {
+        for asset in &mut assets {
+            if let Some(existing) = previous.assets.iter().find(|candidate| candidate.id == asset.id) {
+                asset.user_override = existing.user_override.clone();
+                asset.created_at = asset.created_at.min(existing.created_at);
+            }
+        }
+        let retained: Vec<_> = previous
+            .assets
+            .iter()
+            .filter(|asset| is_user_managed(asset) && !assets.iter().any(|candidate| candidate.id == asset.id))
+            .cloned()
+            .collect();
+        assets.extend(retained);
+    }
+    assets.sort_by(|left, right| left.id.cmp(&right.id));
+
+    MaterialIndex {
+        schema_version: MATERIAL_INDEX_SCHEMA_VERSION,
+        history_fingerprint: history_fingerprint(history),
+        assets,
+        warnings: Vec::new(),
+        updated_at: current_timestamp(),
+    }
+}
+
+fn rebuild_index_from(history: &[HistoryItem], primary: &Path, backup: &Path) -> Result<MaterialIndex, AnyError> {
+    let previous = load_index_from(primary, backup).ok();
+    let index = build_index(history, previous.as_ref());
+    save_index_to(&index, primary, backup)?;
+    Ok(index)
+}
+
+fn ensure_index_from(
+    history: &[HistoryItem],
+    primary: &Path,
+    backup: &Path,
+) -> Result<MaterialIndex, AnyError> {
+    let expected_fingerprint = history_fingerprint(history);
+    match parse_index(primary) {
+        Ok(index) if index.history_fingerprint == expected_fingerprint => Ok(index),
+        _ => rebuild_index_from(history, primary, backup),
+    }
+}
+pub fn load_index() -> Result<MaterialIndex, AnyError> {
+    load_index_from(&materials_index_path(), &materials_index_backup_path())
+}
+
+pub fn ensure_index(history: &[HistoryItem]) -> Result<MaterialIndex, AnyError> {
+    ensure_index_from(
+        history,
+        &materials_index_path(),
+        &materials_index_backup_path(),
+    )
+}
+pub fn rebuild_index(history: &[HistoryItem]) -> Result<MaterialIndex, AnyError> {
+    rebuild_index_from(history, &materials_index_path(), &materials_index_backup_path())
 }
