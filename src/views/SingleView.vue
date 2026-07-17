@@ -11,7 +11,9 @@ import {
 } from "@element-plus/icons-vue";
 
 const store = useAnalysisStore();
-const inputMode = ref<"file" | "clipboard" | "url">("file");
+const preparing = ref(false);
+const inputHub = ref<HTMLElement | null>(null);
+const retryAction = ref<(() => Promise<void>) | null>(null);
 const urlValue = ref("");
 const currentLang = ref<"zh" | "en">("zh");
 const copied = ref(false);
@@ -23,7 +25,7 @@ onMounted(async () => {
   try {
     const { getCurrentWebview } = await import("@tauri-apps/api/webview");
     unlistenTauriDrop = await getCurrentWebview().onDragDropEvent((event) => {
-      if (store.result || store.analyzing || inputMode.value !== "file") return;
+      if (store.result || store.analyzing || preparing.value) return;
       if (event.payload.type === "enter" || event.payload.type === "over") {
         dragOver.value = true;
       } else if (event.payload.type === "leave") {
@@ -149,19 +151,30 @@ async function handleFileClick() {
 }
 
 async function analyzeFilePath(filePath: string) {
-  const dataUrl = await api.readFileAsDataUrl(filePath);
-  store.analyze({ id: uid(), sourceType: "file", filePath, fileName: pathBasename(filePath) }, dataUrl);
+  retryAction.value = () => analyzeFilePath(filePath);
+  preparing.value = true;
+  try {
+    const dataUrl = await api.readFileAsDataUrl(filePath);
+    await store.analyze({ id: uid(), sourceType: "file", filePath, fileName: pathBasename(filePath) }, dataUrl);
+  } finally {
+    preparing.value = false;
+  }
 }
 
-function analyzeDataUrl(file: File, dataUrl: string) {
-  const base64 = dataUrl.split(",")[1];
-  const mimeType = dataUrl.split(";")[0].split(":")[1] || file.type || "image/png";
-  store.analyze(
-    { id: uid(), sourceType: "clipboard", base64Data: base64, mimeType, fileName: file.name || "dropped-image.png" },
-    dataUrl
-  );
+async function analyzeDataUrl(file: File, dataUrl: string) {
+  retryAction.value = () => analyzeDataUrl(file, dataUrl);
+  preparing.value = true;
+  try {
+    const base64 = dataUrl.split(",")[1];
+    const mimeType = dataUrl.split(";")[0].split(":")[1] || file.type || "image/png";
+    await store.analyze(
+      { id: uid(), sourceType: "clipboard", base64Data: base64, mimeType, fileName: file.name || "dropped-image.png" },
+      dataUrl
+    );
+  } finally {
+    preparing.value = false;
+  }
 }
-
 async function handleDrop(e: DragEvent) {
   e.preventDefault();
   e.stopPropagation();
@@ -202,12 +215,30 @@ function handlePaste(e: ClipboardEvent) {
   }
 }
 
+async function analyzeUrl(url: string) {
+  retryAction.value = () => analyzeUrl(url);
+  await store.analyze({ id: uid(), sourceType: "url", imageUrl: url, fileName: urlBasename(url) }, url);
+}
+
+function focusInputHub() {
+  inputHub.value?.focus();
+}
+
 function handleUrl() {
   const url = urlValue.value.trim();
   if (!url) return;
-  store.analyze({ id: uid(), sourceType: "url", imageUrl: url, fileName: urlBasename(url) }, url);
+  void analyzeUrl(url);
 }
 
+async function retryAnalysis() {
+  if (retryAction.value) await retryAction.value();
+}
+
+function resetForNewInput() {
+  retryAction.value = null;
+  urlValue.value = "";
+  store.reset();
+}
 async function copyPrompt() {
   if (!promptText.value) return;
   await navigator.clipboard.writeText(promptText.value);
@@ -262,94 +293,80 @@ function parseStructuredEdit(key: string, value: string) {
 
 <template>
   <div class="h-full flex flex-col">
-    <!-- Top bar: input mode selector (only when no result) -->
-    <div v-if="!store.result && !store.analyzing" data-tauri-drag-region class="px-8 pt-6 pb-5 flex items-center gap-5">
-      <span class="text-[15px] font-semibold text-white/72">选择输入方式</span>
-      <el-radio-group v-model="inputMode" size="default">
-        <el-radio-button value="file">
-          <el-icon class="mr-2"><ElUploadIcon /></el-icon>本地上传
-        </el-radio-button>
-        <el-radio-button value="clipboard">
-          <el-icon class="mr-2"><Document /></el-icon>粘贴图片
-        </el-radio-button>
-        <el-radio-button value="url">
-          <el-icon class="mr-2"><Link /></el-icon>图片URL
-        </el-radio-button>
-      </el-radio-group>
-    </div>
-
-    <!-- URL Input bar -->
-    <div v-if="!store.result && !store.analyzing && inputMode === 'url'" class="px-8 pb-4 flex gap-3">
-      <el-input
-        v-model="urlValue"
-        size="default"
-        placeholder="https://example.com/image.jpg"
-        :prefix-icon="Link"
-        @keydown.enter="handleUrl"
-        class="flex-1"
-      />
-      <el-button type="primary" size="default" @click="handleUrl">
-        <el-icon class="mr-1"><Star /></el-icon>开始分析
-      </el-button>
-    </div>
-
-    <!-- Upload Area (file) -->
-    <div v-if="!store.result && !store.analyzing && inputMode === 'file'" class="flex-1 px-8 pb-8 min-h-0 flex items-center justify-center">
-      <div
-        @click="handleFileClick"
-        @dragover.prevent="dragOver = true"
-        @dragenter.prevent="dragOver = true"
-        @dragleave="handleDragLeave"
-        @drop.prevent="handleDrop"
-        class="w-full max-w-[1040px] h-[460px] flex flex-col items-center justify-center border border-dashed rounded-[22px] cursor-pointer transition-all duration-300 bg-[#10131a]/60"
-        :class="dragOver
-          ? 'border-teal-400/55 bg-teal-400/[0.05]'
-          : 'border-white/[0.2] hover:border-teal-400/45 hover:bg-white/[0.035]'"
-      >
-        <div class="w-[88px] h-[88px] rounded-[22px] bg-teal-500/12 border border-teal-300/18 flex items-center justify-center mb-6">
-          <el-icon :size="44" color="#5eead4"><ElUploadIcon /></el-icon>
-        </div>
-        <p class="text-[22px] font-semibold text-white/90 mb-2">拖拽图片到此处</p>
-        <p class="text-[14px] text-white/45 mb-4">或</p>
-        <el-button type="primary" plain size="default">
-          <el-icon class="mr-1.5"><ElUploadIcon /></el-icon>点击选择文件
-        </el-button>
-        <p class="text-[13px] text-white/45 mt-5">支持 JPG、PNG、WebP 格式，最大 20MB</p>
+    <div v-if="!store.result && !store.analyzing && !preparing" data-tauri-drag-region class="shrink-0 px-8 pt-6 pb-5 flex items-center justify-between">
+      <div>
+        <span class="text-[15px] font-semibold text-white/78">输入图片</span>
+        <span class="ml-3 text-[12px] text-white/38">拖入、粘贴或使用图片 URL</span>
       </div>
     </div>
 
-    <!-- Paste Zone -->
-    <div v-if="!store.result && !store.analyzing && inputMode === 'clipboard'" class="flex-1 px-8 pb-8 min-h-0 flex items-center justify-center">
+    <div v-if="!store.result && !store.analyzing && !preparing" class="flex-1 px-8 pb-8 min-h-0 flex items-center justify-center">
       <div
-        @paste="handlePaste"
+        ref="inputHub"
         tabindex="0"
-        class="w-full max-w-[1040px] h-[460px] flex flex-col items-center justify-center border border-dashed border-white/[0.18] rounded-[22px] cursor-pointer outline-none focus:border-blue-400/45 focus:bg-blue-400/[0.04] transition-all duration-300 bg-[#10131a]/60"
+        @click="focusInputHub"
+        @paste="handlePaste"
+        class="input-hub"
       >
-        <div class="w-[88px] h-[88px] rounded-[22px] bg-blue-500/12 border border-blue-300/18 flex items-center justify-center mb-6">
-          <el-icon :size="44" color="#93c5fd"><Document /></el-icon>
+        <div
+          @click.stop="handleFileClick"
+          @dragover.prevent="dragOver = true"
+          @dragleave="handleDragLeave"
+          @drop.prevent="handleDrop"
+          class="input-hub__dropzone"
+          :class="dragOver ? 'is-dragging' : ''"
+        >
+          <div class="input-hub__upload-icon">
+            <el-icon :size="42" color="#5eead4"><ElUploadIcon /></el-icon>
+          </div>
+          <p class="text-[22px] font-semibold text-white/90 mb-2">拖拽图片到此处</p>
+          <p class="text-[14px] text-white/45 mb-4">或</p>
+          <el-button type="primary" plain size="default">
+            <el-icon class="mr-1.5"><ElUploadIcon /></el-icon>点击选择文件
+          </el-button>
+          <p class="text-[13px] text-white/45 mt-5">支持 JPG、PNG、WebP 格式，最大 20MB</p>
         </div>
-        <p class="text-[22px] font-semibold text-white/90 mb-2">按 Ctrl+V 粘贴截图</p>
-        <p class="text-[14px] text-white/48">点击此区域后粘贴剪贴板中的图片</p>
+
+        <div class="input-hub__tools">
+          <el-button plain @click.stop="focusInputHub">
+            <el-icon class="mr-1"><Document /></el-icon>粘贴图片
+          </el-button>
+          <div class="input-url-row">
+            <el-input v-model="urlValue" placeholder="粘贴图片 URL" clearable @keydown.enter="handleUrl">
+              <template #prefix><el-icon><Link /></el-icon></template>
+            </el-input>
+            <el-button type="primary" @click.stop="handleUrl">
+              <el-icon class="mr-1"><Link /></el-icon>开始分析
+            </el-button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Progress -->
-    <div v-if="store.analyzing" class="flex-1 flex items-center justify-center px-10">
+    <div v-if="store.analyzing || preparing" class="flex-1 flex items-center justify-center px-10">
       <div class="w-full max-w-[480px] text-center">
         <el-progress
           type="circle"
-          :percentage="store.progress.percent"
+          :percentage="preparing ? 2 : store.progress.percent"
           :width="120"
           :stroke-width="6"
           color="#2dd4bf"
         />
-        <p class="text-[16px] font-semibold text-white/75 mt-6">{{ store.progress.text }}</p>
+        <p class="text-[16px] font-semibold text-white/75 mt-6">{{ preparing ? "正在读取图片..." : store.progress.text }}</p>
       </div>
     </div>
 
     <!-- Error -->
-    <div v-if="store.error && !store.analyzing && !store.result" class="flex-1 flex items-center justify-center px-10">
+    <div v-if="store.error && !store.analyzing && !preparing && !store.result" class="flex-1 flex items-center justify-center px-10">
       <div class="w-full max-w-2xl">
+        <div v-if="store.previewSrc" class="retry-preview mb-4">
+          <img :src="store.previewSrc" alt="" class="retry-preview__image" />
+          <div>
+            <p class="text-[14px] font-semibold text-white/78">图片已保留</p>
+            <p class="text-[12px] text-white/42 mt-1">无需重新粘贴，点击下方按钮再次分析</p>
+          </div>
+        </div>
         <el-alert
           type="error"
           :title="'分析失败'"
@@ -361,13 +378,18 @@ function parseStructuredEdit(key: string, value: string) {
             <div class="text-[12px] text-white/55 mb-4 space-y-1">
               <p>💡 可能原因：</p>
               <p>· API 密钥未配置或错误 → 设置中心填写正确的 API Key</p>
-              <p>· 模型名称错误 → 检查"模型"字段（如 gemini-2.5-flash / gpt-4o）</p>
+              <p>· 模型名称错误 → 检查“模型”字段（如 gemini-2.5-flash / gpt-4o）</p>
               <p>· 网络无法访问 API → 尤其 Gemini 可能需要科学上网</p>
               <p>· Base URL 错误（OpenAI 兼容接口）→ 检查格式（如 https://api.openai.com/v1）</p>
             </div>
-            <el-button type="primary" size="default" @click="store.reset()">
-              <el-icon class="mr-1"><RefreshLeft /></el-icon>重新选择
-            </el-button>
+            <div class="flex gap-2 flex-wrap">
+              <el-button v-if="retryAction" type="primary" size="default" @click="retryAnalysis">
+                <el-icon class="mr-1"><RefreshLeft /></el-icon>重新分析
+              </el-button>
+              <el-button size="default" @click="resetForNewInput">
+                <el-icon class="mr-1"><RefreshLeft /></el-icon>重新选择
+              </el-button>
+            </div>
           </template>
         </el-alert>
       </div>
@@ -506,7 +528,7 @@ function parseStructuredEdit(key: string, value: string) {
 
     <!-- Bottom Action Bar -->
     <div v-if="store.result" class="shrink-0 px-6 py-3 border-t border-white/[0.06] flex items-center justify-end gap-2.5 bg-black/10">
-      <el-button size="default" @click="store.reset()">
+      <el-button size="default" @click="resetForNewInput">
         <el-icon class="mr-1"><RefreshLeft /></el-icon>重新分析
       </el-button>
       <el-button type="primary" size="default">
@@ -515,7 +537,7 @@ function parseStructuredEdit(key: string, value: string) {
       <el-button type="warning" size="default" plain>
         <el-icon class="mr-1"><Star /></el-icon>加入收藏
       </el-button>
-      <el-button size="default" plain @click="store.reset()">
+      <el-button size="default" plain @click="resetForNewInput">
         <el-icon class="mr-1"><Back /></el-icon>返回
       </el-button>
     </div>
@@ -555,7 +577,84 @@ function parseStructuredEdit(key: string, value: string) {
 :deep(.el-descriptions__content) {
   color: rgba(255, 255, 255, 0.8) !important;
 }
-.prompt-editor {
+.input-hub {
+  width: 100%;
+  max-width: 1040px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  background: rgba(16, 19, 26, 0.62);
+  outline: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.input-hub:focus-within {
+  border-color: rgba(45, 212, 191, 0.42);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.08);
+}
+.input-hub__dropzone {
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  cursor: pointer;
+  background: rgba(16, 19, 26, 0.6);
+  transition: border-color 180ms ease, background 180ms ease;
+}
+.input-hub__dropzone:hover,
+.input-hub__dropzone.is-dragging {
+  border-color: rgba(45, 212, 191, 0.55);
+  background: rgba(45, 212, 191, 0.06);
+}
+.input-hub__upload-icon {
+  width: 82px;
+  height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+  border-radius: 22px;
+  background: rgba(20, 184, 166, 0.12);
+  border: 1px solid rgba(94, 234, 212, 0.18);
+}
+.input-hub__tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 4px 2px;
+}
+.input-url-row {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+}
+.retry-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(16, 19, 26, 0.72);
+}
+.retry-preview__image {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  object-fit: cover;
+}
+@media (max-width: 900px) {
+  .input-hub__tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .input-url-row {
+    width: 100%;
+  }
+}.prompt-editor {
   width: 100%;
   min-height: 200px;
   resize: vertical;

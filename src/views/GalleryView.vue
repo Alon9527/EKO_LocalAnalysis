@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useGalleryStore } from "@/stores/gallery";
 import { api } from "@/lib/api";
@@ -17,12 +17,18 @@ const modelFilter = ref("");
 const dateFilter = ref("");
 const scoreFilter = ref<number | "">("");
 const copiedField = ref("");
+const promptTab = ref<"zh" | "en">("zh");
 const currentPage = ref(1);
 const pageSize = ref(24);
 const importing = ref(false);
 const isExportPage = computed(() => route.path === "/export");
 
 onMounted(() => store.load());
+
+watch(() => store.detailItem?.id, () => {
+  promptTab.value = "zh";
+  copiedField.value = "";
+});
 
 let searchTimer: ReturnType<typeof setTimeout>;
 function onSearch(val: string) {
@@ -316,20 +322,18 @@ const detailDimensions = (item: any) => {
         :before-close="store.closeDetail"
       >
         <div v-if="store.detailItem" class="h-full flex flex-col p-5 overflow-y-auto select-text">
-          <div class="flex items-start justify-between mb-4">
+          <div class="detail-header mb-4">
             <div>
               <h3 class="text-[18px] font-semibold text-white/90 mb-1">{{ store.detailItem.fileName || '分析结果' }}</h3>
               <p class="text-[12px] text-white/40">{{ store.detailItem.createdAt || '' }}</p>
               <p class="text-[12px] text-white/40">{{ store.detailItem.model || 'GPT-4o Vision' }}</p>
             </div>
-            <div class="flex gap-2">
-              <el-button circle size="default" :type="store.detailItem.favorite ? 'warning' : 'default'" @click="store.toggleFavorite(store.detailItem.id)">
+            <div class="detail-actions"><el-button class="detail-icon-button" circle size="default" :type="store.detailItem.favorite ? 'warning' : 'default'" @click="store.toggleFavorite(store.detailItem.id)">
                 <el-icon><StarFilled v-if="store.detailItem.favorite" /><Star v-else /></el-icon>
-              </el-button>
-              <el-button circle size="default" @click="store.closeDetail">
+              </el-button></div>
+            <el-tooltip content="关闭详情" placement="bottom"><el-button class="detail-close-button" circle size="default" aria-label="关闭详情" @click="store.closeDetail">
                 <el-icon><Close /></el-icon>
-              </el-button>
-            </div>
+              </el-button></el-tooltip>
           </div>
 
           <el-card shadow="never" body-style="padding:0" class="mb-4 overflow-hidden">
@@ -357,36 +361,29 @@ const detailDimensions = (item: any) => {
             </div>
           </div>
 
-          <div class="mb-4">
-            <div class="flex items-center justify-between mb-2">
-              <h4 class="text-[13px] font-semibold text-white/70">中文提示词</h4>
-              <el-button size="small" @click="copyText(store.detailItem.prompt_zh, 'zh')">
-                <el-icon class="mr-1"><Check v-if="copiedField === 'zh'" /><CopyDocument v-else /></el-icon>
-                复制
-              </el-button>
-            </div>
-            <textarea
-              class="prompt-copy-field"
-              :value="store.detailItem.prompt_zh"
-              readonly
-              spellcheck="false"
-            />
-          </div>
-
-          <div class="mb-5">
-            <div class="flex items-center justify-between mb-2">
-              <h4 class="text-[13px] font-semibold text-white/70">English Prompt</h4>
-              <el-button size="small" @click="copyText(store.detailItem.prompt_en, 'en')">
-                <el-icon class="mr-1"><Check v-if="copiedField === 'en'" /><CopyDocument v-else /></el-icon>
-                复制
-              </el-button>
-            </div>
-            <textarea
-              class="prompt-copy-field"
-              :value="store.detailItem.prompt_en"
-              readonly
-              spellcheck="false"
-            />
+          <div class="prompt-tabs-wrap mb-5">
+            <el-tabs v-model="promptTab" class="prompt-tabs">
+              <el-tab-pane label="中文提示词" name="zh">
+                <div class="prompt-tab-toolbar">
+                  <span class="text-[12px] text-white/38">可选取、复制完整内容</span>
+                  <el-button size="small" @click="copyText(store.detailItem.prompt_zh, 'zh')">
+                    <el-icon class="mr-1"><Check v-if="copiedField === 'zh'" /><CopyDocument v-else /></el-icon>
+                    {{ copiedField === 'zh' ? '已复制' : '复制' }}
+                  </el-button>
+                </div>
+                <textarea class="prompt-copy-field" :value="store.detailItem.prompt_zh" readonly spellcheck="false" />
+              </el-tab-pane>
+              <el-tab-pane label="English Prompt" name="en">
+                <div class="prompt-tab-toolbar">
+                  <span class="text-[12px] text-white/38">Select and copy the full prompt</span>
+                  <el-button size="small" @click="copyText(store.detailItem.prompt_en, 'en')">
+                    <el-icon class="mr-1"><Check v-if="copiedField === 'en'" /><CopyDocument v-else /></el-icon>
+                    {{ copiedField === 'en' ? '已复制' : '复制' }}
+                  </el-button>
+                </div>
+                <textarea class="prompt-copy-field" :value="store.detailItem.prompt_en" readonly spellcheck="false" />
+              </el-tab-pane>
+            </el-tabs>
           </div>
 
           <div class="flex gap-2 mt-auto pt-2">
@@ -436,9 +433,46 @@ const detailDimensions = (item: any) => {
 :deep(.el-drawer__body) {
   padding: 0;
 }
-.prompt-copy-field {
+.detail-header {
+  position: relative;
+  min-height: 48px;
+}
+.detail-actions,
+.detail-close-button {
+  position: absolute;
+  top: 0;
+}
+.detail-actions {
+  right: 46px;
+}
+.detail-close-button {
+  right: 0;
+  margin: 0;
+}
+.detail-icon-button,
+.detail-close-button {
+  width: 36px;
+  height: 36px;
+}
+.prompt-tabs-wrap {
+  min-height: 340px;
+}
+:deep(.prompt-tabs .el-tabs__header) {
+  margin-bottom: 8px;
+}
+:deep(.prompt-tabs .el-tabs__nav-wrap::after) {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.prompt-tab-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}.prompt-copy-field {
   width: 100%;
-  min-height: 160px;
+  min-height: 270px;
+  max-height: 460px;
   resize: vertical;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
