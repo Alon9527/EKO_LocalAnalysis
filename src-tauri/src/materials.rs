@@ -33,7 +33,7 @@ pub struct MaterialSourceVariant {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+#[serde(default, rename_all = "camelCase")]
 pub struct MaterialOverride {
     pub display_name: Option<String>,
     pub prompt_zh: Option<String>,
@@ -43,6 +43,7 @@ pub struct MaterialOverride {
     pub manually_edited: bool,
     pub merged_into: Option<String>,
     pub split_from: Option<String>,
+    pub split_source_ids: Vec<String>,
 }
 
 
@@ -741,6 +742,129 @@ mod tests {
         assert_eq!(std::fs::read(&primary).unwrap(), primary_before);
         assert_eq!(std::fs::read(&backup).unwrap(), backup_before);
     }
+
+    #[test]
+    fn rebuild_preserves_merge_relationships_and_source_ownership() {
+        let history = structured_history();
+        let mut index = build_index(&[history.clone()], None);
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let cushion_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{5706}\u{5f62}\u{5750}\u{57ab}"));
+        merge_assets(
+            &mut index,
+            &[chair_id.clone(), cushion_id.clone()],
+            Some("Seating".into()),
+        )
+        .unwrap();
+
+        let rebuilt = build_index(&[history], Some(&index));
+        let target = rebuilt.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+        let child = rebuilt.assets.iter().find(|asset| asset.id == cushion_id).unwrap();
+        assert_eq!(target.sources.len(), 3);
+        assert!(child.sources.is_empty());
+        assert_eq!(child.user_override.merged_into.as_deref(), Some(target.id.as_str()));
+    }
+
+    #[test]
+    fn rebuild_preserves_split_source_ownership_without_duplicates() {
+        let history = structured_history();
+        let mut index = build_index(&[history.clone()], None);
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        let moved_source_id = index.assets.iter().find(|asset| asset.id == chair_id).unwrap().sources[0].id.clone();
+        let changed = split_asset(
+            &mut index,
+            &chair_id,
+            &[moved_source_id.clone()],
+            "Chair back".into(),
+        )
+        .unwrap();
+        let split_id = changed.iter().find(|asset| asset.id != chair_id).unwrap().id.clone();
+
+        let rebuilt = build_index(&[history], Some(&index));
+        let original = rebuilt.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+        let split = rebuilt.assets.iter().find(|asset| asset.id == split_id).unwrap();
+        let occurrences = rebuilt.assets.iter().flat_map(|asset| asset.sources.iter()).filter(|source| source.id == moved_source_id).count();
+        assert_eq!(original.sources.len(), 1);
+        assert_eq!(split.sources.len(), 1);
+        assert_eq!(split.sources[0].id, moved_source_id);
+        assert_eq!(occurrences, 1);
+    }
+
+    #[test]
+    fn patched_index_can_be_saved_and_loaded_durably() {
+        let (primary, backup) = test_index_paths("durable-patch");
+        let mut index = build_index(&[structured_history()], None);
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        apply_patch(
+            &mut index,
+            &chair_id,
+            MaterialPatch {
+                display_name: Some("Edited chair".into()),
+                favorite: Some(true),
+                ..MaterialPatch::default()
+            },
+        )
+        .unwrap();
+        save_index_to(&index, &primary, &backup).unwrap();
+
+        let loaded = load_index_from(&primary, &backup).unwrap();
+        let chair = loaded.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+        assert_eq!(chair.user_override.display_name.as_deref(), Some("Edited chair"));
+        assert!(chair.user_override.favorite);
+    }
+
+    #[test]
+    fn incremental_upsert_and_clear_preserve_user_managed_assets() {
+        let mut first = structured_history();
+        first.id = "history-a".into();
+        let mut second = structured_history();
+        second.id = "history-b".into();
+        second.created_at = 2000;
+        let mut index = build_index(&[first], None);
+        let chair_id = stable_asset_id(MaterialCategory::Element, &normalize_key("\u{4f11}\u{95f2}\u{6905}"));
+        apply_patch(
+            &mut index,
+            &chair_id,
+            MaterialPatch { favorite: Some(true), ..MaterialPatch::default() },
+        )
+        .unwrap();
+
+        upsert_history_source(&mut index, &second);
+        let chair = index.assets.iter().find(|asset| asset.id == chair_id).unwrap();
+        assert_eq!(chair.sources.len(), 4);
+        assert!(chair.user_override.favorite);
+        clear_generated_sources(&mut index);
+        assert!(index.assets.iter().all(|asset| asset.sources.is_empty()));
+        assert_eq!(index.assets.len(), 1);
+        assert_eq!(index.assets[0].id, chair_id);
+    }
+
+    #[test]
+    fn equal_timestamps_produce_deterministic_generated_fields() {
+        let mut first = structured_history();
+        first.id = "history-a".into();
+        let mut second = structured_history();
+        second.id = "history-b".into();
+        second.created_at = first.created_at;
+        second.reconstructed_prompt.as_mut().unwrap()["global_scene"]["atmosphere"] =
+            serde_json::Value::String("\u{5b89}\u{9759} \u{6e29}\u{6696}".into());
+
+        let forward = build_index(&[first.clone(), second.clone()], None);
+        let reverse = build_index(&[second, first], None);
+        assert_eq!(forward.history_fingerprint, reverse.history_fingerprint);
+        assert_eq!(forward.assets, reverse.assets);
+    }
+
+    #[test]
+    fn successful_atomic_save_leaves_no_temporary_files() {
+        let (primary, backup) = test_index_paths("atomic-cleanup");
+        let index = build_index(&[structured_history()], None);
+        save_index_to(&index, &primary, &backup).unwrap();
+        let names: Vec<_> = std::fs::read_dir(primary.parent().unwrap())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert!(names.iter().all(|name| !name.contains(".tmp.")));
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -838,6 +962,51 @@ fn temporary_path(path: &Path, label: &str) -> PathBuf {
     path.with_file_name(format!("{name}.{label}.{}.{}", std::process::id(), current_timestamp()))
 }
 
+#[cfg(windows)]
+fn atomic_replace(source: &Path, destination: &Path) -> Result<(), AnyError> {
+    use std::os::windows::ffi::OsStrExt;
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn MoveFileExW(
+            existing_file_name: *const u16,
+            new_file_name: *const u16,
+            flags: u32,
+        ) -> i32;
+    }
+
+    const MOVEFILE_REPLACE_EXISTING: u32 = 0x1;
+    const MOVEFILE_WRITE_THROUGH: u32 = 0x8;
+    let source_wide: Vec<u16> = source.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let destination_wide: Vec<u16> = destination.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let result = unsafe {
+        MoveFileExW(
+            source_wide.as_ptr(),
+            destination_wide.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    if result == 0 {
+        Err(std::io::Error::last_os_error().into())
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(not(windows))]
+fn atomic_replace(source: &Path, destination: &Path) -> Result<(), AnyError> {
+    fs::rename(source, destination)?;
+    Ok(())
+}
+
+fn write_bytes_atomically(path: &Path, bytes: &[u8]) -> Result<(), AnyError> {
+    let temporary = temporary_path(path, "restore");
+    fs::write(&temporary, bytes)?;
+    let result = atomic_replace(&temporary, path);
+    let _ = fs::remove_file(&temporary);
+    result
+}
+
 fn write_validated(index: &MaterialIndex, path: &Path) -> Result<(), AnyError> {
     fs::write(path, serde_json::to_vec_pretty(index)?)?;
     parse_index(path)?;
@@ -856,7 +1025,7 @@ fn restore_file(path: &Path, original: Option<&[u8]>) -> Result<(), AnyError> {
     match original {
         Some(bytes) => {
             if fs::read(path).ok().as_deref() != Some(bytes) {
-                fs::write(path, bytes)?;
+                write_bytes_atomically(path, bytes)?;
             }
         }
         None => match fs::remove_file(path) {
@@ -891,11 +1060,11 @@ fn save_index_to(index: &MaterialIndex, primary: &Path, backup: &Path) -> Result
     let result = (|| -> Result<(), AnyError> {
         if let (Some(previous), Some(backup_temp)) = (previous.as_ref(), backup_temp.as_ref()) {
             write_validated(previous, backup_temp)?;
-            fs::copy(backup_temp, backup)?;
+            atomic_replace(backup_temp, backup)?;
             parse_index(backup)?;
         }
 
-        fs::copy(&new_index_temp, primary)?;
+        atomic_replace(&new_index_temp, primary)?;
         parse_index(primary)?;
         Ok(())
     })();
@@ -918,12 +1087,17 @@ fn save_index_to(index: &MaterialIndex, primary: &Path, backup: &Path) -> Result
 
     Ok(())
 }
+
+pub fn save_index(index: &MaterialIndex) -> Result<(), AnyError> {
+    save_index_to(index, &materials_index_path(), &materials_index_backup_path())
+}
 fn is_user_managed(asset: &MaterialAsset) -> bool {
     let user = &asset.user_override;
     user.favorite
         || user.manually_edited
         || user.merged_into.is_some()
         || user.split_from.is_some()
+        || !user.split_source_ids.is_empty()
         || user.display_name.is_some()
         || user.prompt_zh.is_some()
         || user.prompt_en.is_some()
@@ -1041,9 +1215,12 @@ pub fn merge_assets(
             *asset = merged.clone();
         } else if unique_ids.iter().any(|id| id == &asset.id) {
             asset.user_override.merged_into = Some(target_id.clone());
+            asset.user_override.manually_edited = true;
+            asset.sources.clear();
             asset.updated_at = now;
         }
     }
+    index.assets.sort_by(|left, right| left.id.cmp(&right.id));
     index.updated_at = now;
     Ok(merged)
 }
@@ -1115,6 +1292,7 @@ pub fn split_asset(
             display_name: Some(display_name.trim().to_string()),
             manually_edited: true,
             split_from: Some(id.to_string()),
+            split_source_ids: identity,
             ..MaterialOverride::default()
         },
         created_at: selected.iter().map(|source| source.created_at).min().unwrap_or(now),
@@ -1129,6 +1307,20 @@ pub fn split_asset(
     index.updated_at = now;
     Ok(vec![original, split])
 }
+
+pub fn upsert_history_source(index: &mut MaterialIndex, item: &HistoryItem) {
+    let previous = index.clone();
+    remove_history_sources(index, &[item.id.clone()]);
+    for candidate in extract_assets(item) {
+        merge_candidate(&mut index.assets, candidate);
+    }
+    reapply_user_relationships(&mut index.assets, &previous);
+    index.assets.retain(|asset| !asset.sources.is_empty() || is_user_managed(asset));
+    index.assets.sort_by(|left, right| left.id.cmp(&right.id));
+    index.history_fingerprint.clear();
+    index.updated_at = current_timestamp();
+}
+
 pub fn remove_history_sources(index: &mut MaterialIndex, ids: &[String]) {
     for asset in &mut index.assets {
         asset
@@ -1140,6 +1332,16 @@ pub fn remove_history_sources(index: &mut MaterialIndex, ids: &[String]) {
     index
         .assets
         .retain(|asset| !asset.sources.is_empty() || is_user_managed(asset));
+    index.history_fingerprint.clear();
+    index.updated_at = current_timestamp();
+}
+
+pub fn clear_generated_sources(index: &mut MaterialIndex) {
+    for asset in &mut index.assets {
+        asset.sources.clear();
+    }
+    index.assets.retain(is_user_managed);
+    index.history_fingerprint = history_fingerprint(&[]);
     index.updated_at = current_timestamp();
 }
 fn sort_sources(sources: &mut Vec<MaterialSourceVariant>) {
@@ -1151,50 +1353,140 @@ fn sort_sources(sources: &mut Vec<MaterialSourceVariant>) {
     });
 }
 
-fn merge_extracted_assets(history: &[HistoryItem]) -> Vec<MaterialAsset> {
-    let mut assets: Vec<MaterialAsset> = Vec::new();
-    for candidate in history.iter().flat_map(extract_assets) {
-        if let Some(existing) = assets.iter_mut().find(|asset| asset.id == candidate.id) {
-            for source in candidate.sources {
-                if !existing.sources.iter().any(|current| current.id == source.id) {
-                    existing.sources.push(source);
-                }
-            }
-            if candidate.updated_at >= existing.updated_at {
-                existing.generated_name = candidate.generated_name;
-                existing.generated_explanation = candidate.generated_explanation;
-                existing.generated_prompt_zh = candidate.generated_prompt_zh;
-                existing.generated_prompt_en = candidate.generated_prompt_en;
-                existing.generated_aliases = candidate.generated_aliases;
-            }
-            existing.created_at = existing.created_at.min(candidate.created_at);
-            existing.updated_at = existing.updated_at.max(candidate.updated_at);
-        } else {
-            assets.push(candidate);
+fn generated_priority(asset: &MaterialAsset) -> (u64, &str) {
+    (
+        asset.updated_at,
+        asset.sources.first().map(|source| source.id.as_str()).unwrap_or(""),
+    )
+}
+
+fn merge_candidate(assets: &mut Vec<MaterialAsset>, candidate: MaterialAsset) {
+    if let Some(existing) = assets.iter_mut().find(|asset| asset.id == candidate.id) {
+        let candidate_priority = generated_priority(&candidate);
+        let existing_priority = generated_priority(existing);
+        if candidate_priority.0 > existing_priority.0
+            || (candidate_priority.0 == existing_priority.0
+                && candidate_priority.1 < existing_priority.1)
+        {
+            existing.generated_name = candidate.generated_name.clone();
+            existing.generated_explanation = candidate.generated_explanation.clone();
+            existing.generated_prompt_zh = candidate.generated_prompt_zh.clone();
+            existing.generated_prompt_en = candidate.generated_prompt_en.clone();
+            existing.generated_aliases = candidate.generated_aliases.clone();
         }
+        for source in candidate.sources {
+            if !existing.sources.iter().any(|current| current.id == source.id) {
+                existing.sources.push(source);
+            }
+        }
+        existing.created_at = existing.created_at.min(candidate.created_at);
+        existing.updated_at = existing.updated_at.max(candidate.updated_at);
+        sort_sources(&mut existing.sources);
+    } else {
+        assets.push(candidate);
+    }
+}
+
+fn merge_extracted_assets(history: &[HistoryItem]) -> Vec<MaterialAsset> {
+    let mut candidates: Vec<_> = history.iter().flat_map(extract_assets).collect();
+    candidates.sort_by(|left, right| {
+        left.id
+            .cmp(&right.id)
+            .then(right.updated_at.cmp(&left.updated_at))
+            .then_with(|| generated_priority(left).1.cmp(generated_priority(right).1))
+    });
+    let mut assets = Vec::new();
+    for candidate in candidates {
+        merge_candidate(&mut assets, candidate);
     }
     for asset in &mut assets {
         sort_sources(&mut asset.sources);
     }
     assets
 }
+
+fn take_sources(assets: &mut [MaterialAsset], source_ids: &[String]) -> Vec<MaterialSourceVariant> {
+    let mut moved = Vec::new();
+    for asset in assets {
+        let mut retained = Vec::new();
+        for source in std::mem::take(&mut asset.sources) {
+            if source_ids.iter().any(|id| id == &source.id) {
+                if !moved.iter().any(|current: &MaterialSourceVariant| current.id == source.id) {
+                    moved.push(source);
+                }
+            } else {
+                retained.push(source);
+            }
+        }
+        asset.sources = retained;
+    }
+    sort_sources(&mut moved);
+    moved
+}
+
+fn reapply_user_relationships(assets: &mut Vec<MaterialAsset>, previous: &MaterialIndex) {
+    for old in &previous.assets {
+        if let Some(current) = assets.iter_mut().find(|asset| asset.id == old.id) {
+            current.user_override = old.user_override.clone();
+            current.created_at = current.created_at.min(old.created_at);
+        } else if is_user_managed(old) {
+            let mut retained = old.clone();
+            retained.sources.clear();
+            assets.push(retained);
+        }
+    }
+
+    let merges: Vec<_> = previous
+        .assets
+        .iter()
+        .filter_map(|asset| {
+            asset.user_override.merged_into.as_ref().map(|target| (asset.id.clone(), target.clone()))
+        })
+        .collect();
+    for (child_id, target_id) in merges {
+        let moved = if let Some(child) = assets.iter_mut().find(|asset| asset.id == child_id) {
+            std::mem::take(&mut child.sources)
+        } else {
+            Vec::new()
+        };
+        if let Some(target) = assets.iter_mut().find(|asset| asset.id == target_id) {
+            for source in moved {
+                if !target.sources.iter().any(|current| current.id == source.id) {
+                    target.sources.push(source);
+                }
+            }
+            sort_sources(&mut target.sources);
+        }
+    }
+
+    let splits: Vec<_> = previous
+        .assets
+        .iter()
+        .filter(|asset| asset.user_override.split_from.is_some())
+        .map(|asset| {
+            let ids = if asset.user_override.split_source_ids.is_empty() {
+                asset.sources.iter().map(|source| source.id.clone()).collect()
+            } else {
+                asset.user_override.split_source_ids.clone()
+            };
+            (asset.id.clone(), ids)
+        })
+        .collect();
+    for (split_id, source_ids) in splits {
+        let moved = take_sources(assets, &source_ids);
+        if let Some(split) = assets.iter_mut().find(|asset| asset.id == split_id) {
+            split.sources = moved;
+            sort_sources(&mut split.sources);
+        }
+    }
+}
+
 fn build_index(history: &[HistoryItem], previous: Option<&MaterialIndex>) -> MaterialIndex {
     let mut assets = merge_extracted_assets(history);
     if let Some(previous) = previous {
-        for asset in &mut assets {
-            if let Some(existing) = previous.assets.iter().find(|candidate| candidate.id == asset.id) {
-                asset.user_override = existing.user_override.clone();
-                asset.created_at = asset.created_at.min(existing.created_at);
-            }
-        }
-        let retained: Vec<_> = previous
-            .assets
-            .iter()
-            .filter(|asset| is_user_managed(asset) && !assets.iter().any(|candidate| candidate.id == asset.id))
-            .cloned()
-            .collect();
-        assets.extend(retained);
+        reapply_user_relationships(&mut assets, previous);
     }
+    assets.retain(|asset| !asset.sources.is_empty() || is_user_managed(asset));
     assets.sort_by(|left, right| left.id.cmp(&right.id));
 
     MaterialIndex {
