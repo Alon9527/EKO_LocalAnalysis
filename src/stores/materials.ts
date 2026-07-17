@@ -26,6 +26,7 @@ export const useMaterialsStore = defineStore("materials", () => {
   const rebuilding = ref(false);
   const error = ref("");
   const warnings = ref<MaterialIndexWarning[]>([]);
+  let latestLoad = 0;
 
   function currentQuery(): MaterialQuery {
     const query: MaterialQuery = {};
@@ -38,16 +39,20 @@ export const useMaterialsStore = defineStore("materials", () => {
   }
 
   async function load() {
+    const requestId = ++latestLoad;
     loading.value = true;
     error.value = "";
     try {
       const response = await api.listMaterials(currentQuery());
+      if (requestId !== latestLoad) return false;
       items.value = response.items;
       warnings.value = response.warnings;
+      return true;
     } catch (caught) {
-      error.value = errorText(caught);
+      if (requestId === latestLoad) error.value = errorText(caught);
+      return false;
     } finally {
-      loading.value = false;
+      if (requestId === latestLoad) loading.value = false;
     }
   }
 
@@ -115,10 +120,9 @@ export const useMaterialsStore = defineStore("materials", () => {
     rebuilding.value = true;
     error.value = "";
     try {
-      const response = await api.rebuildMaterialIndex();
-      items.value = response.items;
-      warnings.value = response.warnings;
-      if (selectedAsset.value) {
+      await api.rebuildMaterialIndex();
+      const loaded = await load();
+      if (loaded && selectedAsset.value) {
         selectedAsset.value = items.value.find(
           (item) => item.id === selectedAsset.value?.id,
         ) || null;

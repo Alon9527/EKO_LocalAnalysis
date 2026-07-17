@@ -39,6 +39,9 @@ describe("material resolved values", () => {
       aliases: [],
       favorite: true,
       manuallyEdited: true,
+      mergedInto: null,
+      splitFrom: null,
+      splitSourceIds: [],
     },
     sources: [],
     createdAt: 1,
@@ -68,7 +71,7 @@ describe("material resolved values", () => {
     expect(materialPromptEn(asset)).toBe("caramel leather");
     expect(materialPromptEn({
       ...asset,
-      userOverride: { ...asset.userOverride, promptEn: undefined },
+      userOverride: { ...asset.userOverride, promptEn: null },
     })).toBe("fine leather grain");
   });
 });

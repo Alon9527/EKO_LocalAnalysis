@@ -13,9 +13,15 @@ function asset(id = "asset-1", name = "Chair"): MaterialAsset {
     generatedPromptEn: `${name} en`,
     generatedAliases: [],
     userOverride: {
+      displayName: null,
+      promptZh: null,
+      promptEn: null,
       aliases: [],
       favorite: false,
       manuallyEdited: false,
+      mergedInto: null,
+      splitFrom: null,
+      splitSourceIds: [],
     },
     sources: [],
     createdAt: 1,
@@ -54,6 +60,29 @@ describe("materials store", () => {
       minSources: 2,
     });
     expect(store.items).toEqual([item]);
+    expect(store.loading).toBe(false);
+  });
+
+  it("keeps the newest result when an older load finishes last", async () => {
+    let resolveFirst!: (value: MaterialListResponse) => void;
+    let resolveSecond!: (value: MaterialListResponse) => void;
+    vi.spyOn(api, "listMaterials")
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
+    const store = useMaterialsStore();
+
+    store.keyword = "old";
+    const firstLoad = store.load();
+    store.keyword = "new";
+    const secondLoad = store.load();
+    resolveSecond(response([asset("new", "New result")]));
+    await secondLoad;
+    expect(store.items[0].id).toBe("new");
+    expect(store.loading).toBe(false);
+
+    resolveFirst(response([asset("old", "Old result")]));
+    await firstLoad;
+    expect(store.items[0].id).toBe("new");
     expect(store.loading).toBe(false);
   });
 
@@ -125,6 +154,27 @@ describe("materials store", () => {
     expect(store.items).toEqual([original, split]);
   });
 
+  it("reapplies active filters after a successful rebuild", async () => {
+    const selected = asset("selected", "Selected");
+    const filtered = asset("filtered", "Filtered");
+    vi.spyOn(api, "rebuildMaterialIndex").mockResolvedValue(response([
+      selected,
+      filtered,
+      asset("unfiltered", "Unfiltered"),
+    ]));
+    const list = vi.spyOn(api, "listMaterials").mockResolvedValue(response([filtered]));
+    const store = useMaterialsStore();
+    store.items = [selected];
+    store.openAsset(selected.id);
+    store.keyword = "filtered";
+
+    await store.rebuild();
+
+    expect(list).toHaveBeenCalledWith({ keyword: "filtered" });
+    expect(store.items).toEqual([filtered]);
+    expect(store.selectedAsset).toBeNull();
+  });
+
   it("keeps the previous list and exposes an error when rebuild fails", async () => {
     const original = asset();
     vi.spyOn(api, "rebuildMaterialIndex").mockRejectedValue(new Error("disk full"));
@@ -136,5 +186,9 @@ describe("materials store", () => {
     expect(store.items).toEqual([original]);
     expect(store.error).toContain("disk full");
     expect(store.rebuilding).toBe(false);
+  });
+
+  it("rejects manual rebuild in browser preview", async () => {
+    await expect(api.rebuildMaterialIndex()).rejects.toThrow();
   });
 });

@@ -76,20 +76,20 @@ export interface MaterialSourceVariant {
   thumbnailId: string;
   fieldPath: string;
   promptZh: string;
-  promptEn?: string;
+  promptEn: string | null;
   createdAt: number;
 }
 
 export interface MaterialOverride {
-  displayName?: string;
-  promptZh?: string;
-  promptEn?: string;
+  displayName: string | null;
+  promptZh: string | null;
+  promptEn: string | null;
   aliases: string[];
   favorite: boolean;
   manuallyEdited: boolean;
-  mergedInto?: string;
-  splitFrom?: string;
-  splitSourceIds?: string[];
+  mergedInto: string | null;
+  splitFrom: string | null;
+  splitSourceIds: string[];
 }
 
 export interface MaterialAsset {
@@ -98,7 +98,7 @@ export interface MaterialAsset {
   generatedName: string;
   generatedExplanation: string;
   generatedPromptZh: string;
-  generatedPromptEn?: string;
+  generatedPromptEn: string | null;
   generatedAliases: string[];
   userOverride: MaterialOverride;
   sources: MaterialSourceVariant[];
@@ -248,7 +248,7 @@ export const api = {
   },
 
   async rebuildMaterialIndex(): Promise<MaterialListResponse> {
-    if (!isTauri) return { ...EMPTY_MATERIAL_RESPONSE, items: [], warnings: [] };
+    if (!isTauri) browserUnsupported("Rebuild materials index");
     return invokeTauri<MaterialListResponse>("rebuild_material_index");
   },
 
