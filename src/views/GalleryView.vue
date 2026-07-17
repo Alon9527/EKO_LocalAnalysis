@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useGalleryStore } from "@/stores/gallery";
 import { api } from "@/lib/api";
 import RadarChart from "@/components/RadarChart.vue";
+import AnalysisBreakdown from "@/components/materials/AnalysisBreakdown.vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Search, Star, StarFilled, Download, Delete, Close, CopyDocument, Check, Upload,
@@ -19,6 +20,7 @@ const dateFilter = ref("");
 const scoreFilter = ref<number | "">("");
 const copiedField = ref("");
 const promptTab = ref<"zh" | "en">("zh");
+const detailTab = ref<"prompt" | "breakdown">("prompt");
 const currentPage = ref(1);
 const pageSize = ref(24);
 const importing = ref(false);
@@ -55,6 +57,7 @@ function onDetailVisibilityChange(visible: boolean) {
 }
 
 watch(() => store.detailItem?.id, () => {
+  detailTab.value = "prompt";
   promptTab.value = "zh";
   copiedField.value = "";
 });
@@ -391,27 +394,36 @@ const detailDimensions = (item: any) => {
             </div>
           </div>
 
-          <div class="prompt-tabs-wrap mb-5">
-            <el-tabs v-model="promptTab" class="prompt-tabs">
-              <el-tab-pane label="中文提示词" name="zh">
-                <div class="prompt-tab-toolbar">
-                  <span class="text-[12px] text-white/38">可选取、复制完整内容</span>
-                  <el-button size="small" @click="copyText(store.detailItem.prompt_zh, 'zh')">
-                    <el-icon class="mr-1"><Check v-if="copiedField === 'zh'" /><CopyDocument v-else /></el-icon>
-                    {{ copiedField === 'zh' ? '已复制' : '复制' }}
-                  </el-button>
+          <div class="detail-content-tabs mb-5">
+            <el-tabs v-model="detailTab" class="detail-mode-tabs">
+              <el-tab-pane label="完整 Prompt" name="prompt">
+                <div class="prompt-tabs-wrap">
+                  <el-tabs v-model="promptTab" class="prompt-tabs">
+                    <el-tab-pane label="中文提示词" name="zh">
+                      <div class="prompt-tab-toolbar">
+                        <span class="text-[12px] text-white/38">可选取、复制完整内容</span>
+                        <el-button size="small" @click="copyText(store.detailItem.prompt_zh, 'zh')">
+                          <el-icon class="mr-1"><Check v-if="copiedField === 'zh'" /><CopyDocument v-else /></el-icon>
+                          {{ copiedField === 'zh' ? '已复制' : '复制' }}
+                        </el-button>
+                      </div>
+                      <textarea class="prompt-copy-field" :value="store.detailItem.prompt_zh" readonly spellcheck="false" />
+                    </el-tab-pane>
+                    <el-tab-pane label="English Prompt" name="en">
+                      <div class="prompt-tab-toolbar">
+                        <span class="text-[12px] text-white/38">Select and copy the full prompt</span>
+                        <el-button size="small" @click="copyText(store.detailItem.prompt_en, 'en')">
+                          <el-icon class="mr-1"><Check v-if="copiedField === 'en'" /><CopyDocument v-else /></el-icon>
+                          {{ copiedField === 'en' ? '已复制' : '复制' }}
+                        </el-button>
+                      </div>
+                      <textarea class="prompt-copy-field" :value="store.detailItem.prompt_en" readonly spellcheck="false" />
+                    </el-tab-pane>
+                  </el-tabs>
                 </div>
-                <textarea class="prompt-copy-field" :value="store.detailItem.prompt_zh" readonly spellcheck="false" />
               </el-tab-pane>
-              <el-tab-pane label="English Prompt" name="en">
-                <div class="prompt-tab-toolbar">
-                  <span class="text-[12px] text-white/38">Select and copy the full prompt</span>
-                  <el-button size="small" @click="copyText(store.detailItem.prompt_en, 'en')">
-                    <el-icon class="mr-1"><Check v-if="copiedField === 'en'" /><CopyDocument v-else /></el-icon>
-                    {{ copiedField === 'en' ? '已复制' : '复制' }}
-                  </el-button>
-                </div>
-                <textarea class="prompt-copy-field" :value="store.detailItem.prompt_en" readonly spellcheck="false" />
+              <el-tab-pane label="分析拆解" name="breakdown">
+                <AnalysisBreakdown :history-id="store.detailItem.id" />
               </el-tab-pane>
             </el-tabs>
           </div>
@@ -483,6 +495,16 @@ const detailDimensions = (item: any) => {
 .detail-close-button {
   width: 36px;
   height: 36px;
+}
+.detail-content-tabs {
+  min-height: 390px;
+}
+:deep(.detail-mode-tabs > .el-tabs__header) {
+  margin-bottom: 12px;
+}
+:deep(.detail-mode-tabs > .el-tabs__header .el-tabs__item) {
+  height: 36px;
+  font-size: 13px;
 }
 .prompt-tabs-wrap {
   min-height: 340px;

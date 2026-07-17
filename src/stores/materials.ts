@@ -28,6 +28,7 @@ export const useMaterialsStore = defineStore("materials", () => {
   const error = ref("");
   const warnings = ref<MaterialIndexWarning[]>([]);
   let latestLoad = 0;
+  let latestHistoryLoad = 0;
   let latestCandidateLoad = 0;
 
   function currentQuery(): MaterialQuery {
@@ -59,11 +60,16 @@ export const useMaterialsStore = defineStore("materials", () => {
   }
 
   async function loadForHistory(historyId: string) {
+    const requestId = ++latestHistoryLoad;
     error.value = "";
     try {
-      historyItems.value[historyId] = await api.getHistoryMaterials(historyId);
+      const assets = await api.getHistoryMaterials(historyId);
+      if (requestId !== latestHistoryLoad) return false;
+      historyItems.value[historyId] = assets;
+      return true;
     } catch (caught) {
-      error.value = errorText(caught);
+      if (requestId === latestHistoryLoad) error.value = errorText(caught);
+      return false;
     }
   }
   async function loadMergeCandidates(materialCategory: MaterialCategory) {
