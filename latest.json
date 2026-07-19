@@ -1,11 +1,11 @@
-﻿{
-    "version":  "1.2.0",
-    "notes":  "新增浏览器插件、结果导入导出、可编辑结构化提示词，并将更新检查改为手动触发。",
-    "pub_date":  "2026-07-10T07:04:21Z",
+{
+    "version":  "1.2.1",
+    "notes":  "EKO v1.2.1: materials library, history breakdown, and UI interaction updates.",
+    "pub_date":  "2026-07-19T07:04:00Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3dncvYlA3STBwWTNTcG1xTHFiTU9RcWhOeEZmcmFoU3QwdW5PRmRPOU5NNjJUU2RIK2NrVjVhdlVDZzZ2NmhndnM2QnFROVJrbS9JSGFmRUFVeFpRYlFzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNjY2OTg5CWZpbGU6RUtPXzEuMi4wX3g2NC1zZXR1cC5leGUKenFFdWNqUExqdnVRVkZlWjh0aFNKSWpuNC8rbUdXbFAwNUFpMFc3NUNrRWtvNk0xU2U5d1hoUjRKK3lUWnAyaWlNVG9OWldzNUROTk5aVGt2dVlyRFE9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.0/EKO_1.2.0_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djZWYkhRNUNGU1E1QzQzWmtCU2hoem9IVUNQZ2VmcDJnaEJJRzNVZThzY3FUZHFqWW1yOGdSNEJjR3ZKSlpFaGF5N0xXWDdPODRRd1dIQUE5QjNkQ2cwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDQ0NDc0CWZpbGU6RUtPXzEuMi4xX3g2NC1zZXR1cC5leGUKeU8vOXRXNEdkMlBFMlF6NmNzU0tpVksxcEFkZFdQZjZENEhJWFF0SnJsa0tYejdwZEhMak1iRTZmdkpPaWtDRFlzcllCUEo5M3k3WXFka2k2ZVRORFE9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.1/EKO_1.2.1_x64-setup.exe"
                                          }
                   }
 }
