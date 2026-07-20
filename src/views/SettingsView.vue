@@ -20,6 +20,9 @@ if (isTauri) {
 const downloadProgress = ref(0);
 const downloadStatus = ref("");
 const downloadVisible = ref(false);
+const updateDialogVisible = ref(false);
+const pendingUpdate = ref<any>(null);
+const installingUpdate = ref(false);
 
 async function checkUpdate() {
   if (!isTauri) {
@@ -34,19 +37,28 @@ async function checkUpdate() {
       updateStore.clear();
       return;
     }
-    await ElMessageBox.confirm(
-      `发现新版本 v${update.version}\n\n${update.body || "暂无更新说明"}`,
-      "版本更新",
-      { confirmButtonText: "立即更新", cancelButtonText: "稍后", dangerouslyUseHTMLString: false }
-    );
+    pendingUpdate.value = update;
+    updateDialogVisible.value = true;
+  } catch (err: any) {
+    ElMessage.error("检查更新失败: " + (err?.message || err));
+  } finally {
+    checking.value = false;
+  }
+}
 
+async function installPendingUpdate() {
+  const update = pendingUpdate.value || updateStore.updateRef;
+  if (!update) return;
+  installingUpdate.value = true;
+  updateDialogVisible.value = false;
+  try {
     let totalBytes = 0;
     let downloaded = 0;
     downloadProgress.value = 0;
     downloadStatus.value = "准备下载...";
     downloadVisible.value = true;
 
-    await update.downloadAndInstall((event) => {
+    await update.downloadAndInstall((event: any) => {
       switch (event.event) {
         case "Started":
           totalBytes = event.data.contentLength || 0;
@@ -69,19 +81,18 @@ async function checkUpdate() {
     });
 
     downloadStatus.value = "安装中，应用即将重启...";
+    pendingUpdate.value = null;
     updateStore.clear();
     const { relaunch } = await import("@tauri-apps/plugin-process");
     await relaunch();
   } catch (err: any) {
     downloadVisible.value = false;
-    if (err !== "cancel") {
-      ElMessage.error("更新失败: " + (err?.message || err));
-    }
+    updateDialogVisible.value = true;
+    ElMessage.error("更新失败: " + (err?.message || err));
   } finally {
-    checking.value = false;
+    installingUpdate.value = false;
   }
 }
-
 const settingsStore = useSettingsStore();
 const galleryStore = useGalleryStore();
 const updateStore = useUpdateStore();
@@ -255,13 +266,34 @@ async function clearAll() {
         </div>
       </el-card>
 
+      <!-- Update Dialog -->
+      <el-dialog
+        v-model="updateDialogVisible"
+        class="update-dialog"
+        title="版本更新"
+        width="460px"
+        :close-on-click-modal="false"
+      >
+        <div class="update-dialog__body">
+          <p class="update-dialog__version">发现新版本 v{{ updateStore.version }}</p>
+          <p class="update-dialog__notes">{{ updateStore.notes || "暂无更新说明" }}</p>
+        </div>
+        <template #footer>
+          <div class="update-dialog__footer">
+            <el-button :disabled="installingUpdate" @click="updateDialogVisible = false">稍后</el-button>
+            <el-button type="primary" :loading="installingUpdate" @click="installPendingUpdate">
+              立即更新
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
+
       <!-- Download Progress Dialog -->
-      <el-dialog v-model="downloadVisible" title="正在更新" :show-close="false" :close-on-click-modal="false" :close-on-press-escape="false" width="420px">
+      <el-dialog v-model="downloadVisible" class="download-dialog" title="正在更新" :show-close="false" :close-on-click-modal="false" :close-on-press-escape="false" width="420px">
         <p class="text-[14px] text-white/70 mb-4">{{ downloadStatus }}</p>
         <el-progress :percentage="downloadProgress" :stroke-width="14" :text-inside="true" />
         <p class="text-[12px] text-white/40 mt-3">下载完成后会自动重启应用</p>
       </el-dialog>
-
       <!-- Data Management -->
       <el-card class="settings-card">
         <template #header>
@@ -319,5 +351,61 @@ async function clearAll() {
 :deep(.settings-form .el-input__inner) {
   height: 32px !important;
   font-size: 12px !important;
+}
+:deep(.update-dialog),
+:deep(.download-dialog) {
+  background: rgba(14, 17, 23, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+:deep(.update-dialog .el-dialog__header),
+:deep(.download-dialog .el-dialog__header) {
+  padding: 18px 22px 12px;
+  margin-right: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+:deep(.update-dialog .el-dialog__title),
+:deep(.download-dialog .el-dialog__title) {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 18px;
+  font-weight: 700;
+}
+:deep(.update-dialog .el-dialog__body),
+:deep(.download-dialog .el-dialog__body) {
+  padding: 18px 22px;
+}
+:deep(.update-dialog .el-dialog__footer) {
+  padding: 0 22px 20px;
+}
+.update-dialog__body {
+  display: grid;
+  gap: 10px;
+}
+.update-dialog__version {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.update-dialog__notes {
+  max-height: 160px;
+  overflow: auto;
+  padding: 12px 14px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.65;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+.update-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>
