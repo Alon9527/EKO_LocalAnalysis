@@ -1,11 +1,11 @@
 {
-    "version":  "1.2.1",
-    "notes":  "EKO v1.2.1: materials library, history breakdown, and UI interaction updates.",
-    "pub_date":  "2026-07-19T07:04:00Z",
+    "version":  "1.2.5",
+    "notes":  "Add separate GPT Image and Nano Banana reverse prompts.",
+    "pub_date":  "2026-07-20T09:18:59Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djZWYkhRNUNGU1E1QzQzWmtCU2hoem9IVUNQZ2VmcDJnaEJJRzNVZThzY3FUZHFqWW1yOGdSNEJjR3ZKSlpFaGF5N0xXWDdPODRRd1dIQUE5QjNkQ2cwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NDQ0NDc0CWZpbGU6RUtPXzEuMi4xX3g2NC1zZXR1cC5leGUKeU8vOXRXNEdkMlBFMlF6NmNzU0tpVksxcEFkZFdQZjZENEhJWFF0SnJsa0tYejdwZEhMak1iRTZmdkpPaWtDRFlzcllCUEo5M3k3WXFka2k2ZVRORFE9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.1/EKO_1.2.1_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djkySnhRSlk0TXEwSWh2SlhQTlRDOW8vc1VURFYzc3Q3VFVQR0o1dGlGQVA4d25XellhcWIzNEtBL1pqUnVRekRrb0pIaFAyYnhjZzAzVHJ1cEFxS1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTM4Njg5CWZpbGU6RUtPXzEuMi41X3g2NC1zZXR1cC5leGUKZ1d6RHVhc2kzbWhxNjFrdEdHYVliL0ZGUko2dTJuQS9QV0RXalRmcXBDaTRDbnBlNTI0SjRWcmZ5VUlPNDRGb2h6T21Td2VEbkdRb0FkdXFmZnFVRGc9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.5/EKO_1.2.5_x64-setup.exe"
                                          }
                   }
 }
