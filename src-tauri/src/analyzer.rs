@@ -22,6 +22,10 @@ pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<Hist
 
     let structured_prompt = build_structured_prompt(&result);
     let quality = compute_quality_from_json(&result);
+    let gpt_prompt_en = model_prompt_text(&result, "gpt_image_2", "prompt_en");
+    let gpt_prompt_zh = model_prompt_text(&result, "gpt_image_2", "prompt_zh");
+    let nano_prompt_en = value_text(result.get("model_prompts").and_then(|v| v.get("nano_banana_pro")).and_then(|v| v.get("prompt_en")));
+    let nano_prompt_zh = value_text(result.get("model_prompts").and_then(|v| v.get("nano_banana_pro")).and_then(|v| v.get("prompt_zh")));
 
     let item = HistoryItem {
         id: task.id.clone(),
@@ -34,8 +38,12 @@ pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<Hist
         reconstructed_prompt: Some(structured_prompt),
         reconstructed_prompt_zh: None,
         quality_notes: None,
-        prompt_en: result.get("prompt_en").and_then(|v| v.as_str()).map(|s| s.to_string()),
-        prompt_zh: result.get("prompt_zh").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        prompt_en: gpt_prompt_en.clone(),
+        prompt_zh: gpt_prompt_zh.clone(),
+        prompt_gpt_image_en: gpt_prompt_en.clone(),
+        prompt_gpt_image_zh: gpt_prompt_zh.clone(),
+        prompt_nano_banana_en: nano_prompt_en.clone(),
+        prompt_nano_banana_zh: nano_prompt_zh.clone(),
         quality_score: quality.0,
         quality_label: quality.1.clone(),
         quality_breakdown: quality.2.clone(),
@@ -125,80 +133,40 @@ fn save_thumbnail(task_id: &str, base64_data: &str) {
 }
 
 fn build_inference_instruction() -> String {
-    r#"你是一个图片反推提示词大师，专门把用户上传或提供的参考图片，反推成适合 AIGC 生图使用的结构化双语 Prompt JSON。
+    r#"You are an expert image-to-prompt analyst. Analyze the provided reference image and return only valid raw JSON. Do not include Markdown, explanations, comments, or code fences.
 
-工作规则：
-1. 直接分析输入图片。
-2. 只输出 raw JSON，不要输出 Markdown、解释、寒暄、代码块或额外说明。
-3. 所有结构化分析字段使用流畅中文；prompt_en 使用英文；prompt_zh 是 prompt_en 的忠实中文翻译。
-4. 只描述画面中可见或高度可信的视觉信息。不要编造品牌、型号、材质、场景故事或看不见的内容。
-5. 使用正向视觉描述，避免负面提示词和排除式表达。
-6. aspect_ratio 只能从以下值中选择最接近的一项：1:1、3:4、4:3、9:16、16:9。
-7. contains_people 必须是 JSON boolean：true 或 false。
-8. 如果图片中有可见文字，embedded_text 必须使用英文固定格式：with the text "..." in a typography，引号内文字不超过 25 个字符。如果没有可见文字，填空字符串 ""。
-9. prompt_en 应该是可直接用于生图的高质量英文提示词，包含主体、环境、光线、构图、材质、镜头、氛围和技术质感，长度不超过 480 words。
-10. prompt_zh 必须忠实翻译 prompt_en，不要额外扩写或删减。
-11. 输出前自检 JSON 是否有效、字段是否完整、数组和 boolean 类型是否正确。
+Core rules:
+1. Describe only visible or highly credible visual information. Do not invent brand names, model names, hidden stories, unseen materials, or unsupported details.
+2. Use fluent Chinese for structured analysis fields. Use English for prompt_en fields. Use faithful Chinese translations for prompt_zh fields.
+3. Use positive visual language. Prefer preserve, match, keep, and recreate instead of negative exclusion phrasing.
+4. aspect_ratio must be the closest value from: 1:1, 3:4, 4:3, 9:16, 16:9.
+5. contains_people must be a JSON boolean.
+6. If visible text exists, embedded_text must be exactly: with the text "..." in a typography. Keep quoted text under 25 characters. If no visible text exists, use an empty string.
+7. Top-level prompt_en and prompt_zh must mirror model_prompts.gpt_image_2 for backward compatibility.
 
-输出 JSON 必须使用以下结构：
+Model-specific prompt rules:
+- GPT Image: write one dense production-ready descriptive prompt. Emphasize subject, environment, lighting, composition, materials, camera/lens, atmosphere, and technical finish. Keep it natural, compact, and directly usable for GPT Image. Keep it under 480 words.
+- Nano Banana Pro / Gemini image generation: write an instruction-style reference reconstruction prompt. Start with: Recreate the reference image closely. Explicitly preserve subject identity, object count, spatial layout, camera angle, framing, perspective, crop, aspect ratio, lighting direction, shadow softness, color palette, material textures, visible text, and atmosphere. Then list the major visual elements in stable order from foreground to background. Use precise geometric and relational language instead of style-only keywords. Keep it under 520 words.
+
+Return JSON with exactly this structure:
 {
-  "global_scene": {
-    "art_style": "",
-    "atmosphere": "",
-    "color_palette": [],
-    "lighting": ""
-  },
-  "composition": {
-    "camera_angle": "",
-    "focal_length": "",
-    "framing": "",
-    "depth_of_field": ""
-  },
-  "entities": [
-    {
-      "label": "",
-      "appearance": "",
-      "pose": {
-        "action_description": "",
-        "body_language": "",
-        "spatial_position": ""
-      },
-      "sub_elements": []
-    }
-  ],
-  "environment_details": {
-    "foreground": "",
-    "midground": "",
-    "background": ""
-  },
-  "technical_specs": {
-    "texture_fidelity": "",
-    "render_engine_style": "",
-    "vfx": []
-  },
+  "global_scene": { "art_style": "", "atmosphere": "", "color_palette": [], "lighting": "" },
+  "composition": { "camera_angle": "", "focal_length": "", "framing": "", "depth_of_field": "" },
+  "entities": [ { "label": "", "appearance": "", "pose": { "action_description": "", "body_language": "", "spatial_position": "" }, "sub_elements": [] } ],
+  "environment_details": { "foreground": "", "midground": "", "background": "" },
+  "technical_specs": { "texture_fidelity": "", "render_engine_style": "", "vfx": [] },
   "aspect_ratio": "1:1",
   "contains_people": false,
   "embedded_text": "",
+  "model_prompts": {
+    "gpt_image_2": { "prompt_en": "", "prompt_zh": "" },
+    "nano_banana_pro": { "prompt_en": "", "prompt_zh": "" }
+  },
   "prompt_en": "",
   "prompt_zh": ""
 }
 
-字段写法要求：
-- global_scene.art_style：画面媒介与风格，如商业摄影、电影感产品摄影、数字插画、3D 渲染、概念艺术等。
-- global_scene.atmosphere：整体情绪和氛围。
-- global_scene.color_palette：主要色彩和点缀色。
-- global_scene.lighting：光源方向、柔硬、强弱、色温、反射、阴影。
-- composition.camera_angle：视角，如平视、俯拍、低角度、近景、微距。
-- composition.focal_length：镜头感，如广角、标准镜头、人像长焦、微距、长焦压缩。
-- composition.framing：主体位置、裁切、对称、三分法、留白、视觉平衡。
-- composition.depth_of_field：景深、焦点、虚化、散景。
-- entities：列出画面中重要主体或物体，包含外观、材质、颜色、动作、位置和子元素。
-- environment_details：拆成前景、中景、背景。
-- technical_specs.texture_fidelity：材质细节，如织物纹理、金属反光、玻璃、皮肤、纸张、塑料等。
-- technical_specs.render_engine_style：摄影或渲染质感，如真实商业摄影、Octane 风格、Unreal 风格、水彩、矢量、胶片等。
-- technical_specs.vfx：视觉效果，如光晕、雾气、粒子、运动模糊、颗粒、镜头光斑、反射等。
-
-Return JSON only."#.to_string()
+Validate before output: valid JSON, complete fields, correct arrays and booleans, no trailing commas."#.to_string()
 }
 
 async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
@@ -317,6 +285,15 @@ fn parse_json_response(text: &str) -> Result<Value, Box<dyn std::error::Error + 
     Err("Failed to parse model response as JSON".into())
 }
 
+fn value_text(value: Option<&Value>) -> Option<String> {
+    value.and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(str::to_string)
+}
+
+fn model_prompt_text(result: &Value, model_key: &str, field: &str) -> Option<String> {
+    value_text(result.get("model_prompts").and_then(|v| v.get(model_key)).and_then(|v| v.get(field)))
+        .or_else(|| value_text(result.get(field)))
+}
+
 fn build_structured_prompt(result: &Value) -> Value {
     if result.get("global_scene").is_some()
         || result.get("composition").is_some()
@@ -330,7 +307,8 @@ fn build_structured_prompt(result: &Value) -> Value {
             "entities": result.get("entities").cloned().unwrap_or_else(|| serde_json::json!([])),
             "environment_details": result.get("environment_details").cloned().unwrap_or_else(|| serde_json::json!({})),
             "technical_specs": result.get("technical_specs").cloned().unwrap_or_else(|| serde_json::json!({})),
-            "embedded_text": result.get("embedded_text").cloned().unwrap_or_else(|| serde_json::json!(""))
+            "embedded_text": result.get("embedded_text").cloned().unwrap_or_else(|| serde_json::json!("")),
+            "model_prompts": result.get("model_prompts").cloned().unwrap_or_else(|| serde_json::json!({}))
         })
     } else {
         result.get("reconstructed_prompt").cloned().unwrap_or_else(|| serde_json::json!({}))
@@ -427,4 +405,40 @@ fn compute_quality_from_json(result: &Value) -> (u32, String, Value, Vec<String>
     });
 
     (total, label.to_string(), breakdown, warnings)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn structured_prompt_preserves_model_specific_prompts() {
+        let result = serde_json::json!({
+            "global_scene": { "art_style": "commercial photography" },
+            "composition": { "camera_angle": "eye level" },
+            "entities": [],
+            "environment_details": {},
+            "technical_specs": {},
+            "embedded_text": "",
+            "model_prompts": {
+                "gpt_image_2": { "prompt_en": "A compact descriptive prompt for GPT Image.", "prompt_zh": "GPT Image prompt zh." },
+                "nano_banana_pro": { "prompt_en": "Recreate the reference image closely and preserve the same camera angle.", "prompt_zh": "Nano Banana prompt zh." }
+            }
+        });
+
+        let structured = build_structured_prompt(&result);
+        assert_eq!(structured["model_prompts"]["nano_banana_pro"]["prompt_en"], "Recreate the reference image closely and preserve the same camera angle.");
+    }
+
+    #[test]
+    fn model_prompt_text_prefers_specific_model_then_legacy_prompt() {
+        let result = serde_json::json!({
+            "prompt_en": "Legacy prompt",
+            "model_prompts": { "gpt_image_2": { "prompt_en": "GPT prompt" } }
+        });
+
+        assert_eq!(model_prompt_text(&result, "gpt_image_2", "prompt_en"), Some("GPT prompt".to_string()));
+        assert_eq!(model_prompt_text(&result, "nano_banana_pro", "prompt_en"), Some("Legacy prompt".to_string()));
+    }
 }

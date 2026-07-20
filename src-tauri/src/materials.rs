@@ -404,7 +404,11 @@ mod tests {
             })),
             reconstructed_prompt_zh: None, quality_notes: None,
             prompt_en: Some("A caramel leather lounge chair with curved arms, warm window light, eye-level standard-lens interior photography.".into()),
+            prompt_gpt_image_en: Some("A caramel leather lounge chair with curved arms, warm window light, eye-level standard-lens interior photography.".into()),
+            prompt_nano_banana_en: Some("Recreate the reference image closely, preserving the caramel leather lounge chair, warm window light, and eye-level standard-lens composition.".into()),
             prompt_zh: Some("\u{7126}\u{7cd6}\u{8272}\u{76ae}\u{9769}\u{4f11}\u{95f2}\u{6905}\u{ff0c}\u{5f27}\u{5f62}\u{6276}\u{624b}\u{ff0c}\u{6696}\u{8272}\u{7a97}\u{5149}\u{ff0c}\u{5e73}\u{89c6}\u{6807}\u{51c6}\u{955c}\u{5934}\u{5ba4}\u{5185}\u{6444}\u{5f71}\u{3002}".into()),
+            prompt_gpt_image_zh: None,
+            prompt_nano_banana_zh: None,
             quality_score: 84, quality_label: "\u{8f83}\u{5f3a}".into(), quality_breakdown: serde_json::json!({}), quality_warnings: vec![],
             model: "gpt-5.4".into(), provider: "openai-compatible".into(), elapsed_ms: 100, favorite: false, created_at: 1000,
         }

@@ -3,6 +3,7 @@ import { ref, computed, onBeforeUnmount, onMounted } from "vue";
 import { useAnalysisStore } from "@/stores/analysis";
 import { api } from "@/lib/api";
 import { uid, pathBasename, urlBasename } from "@/lib/utils";
+import { getModelPrompt, setModelPrompt, type PromptTarget } from "@/lib/model-prompts";
 import RadarChart from "@/components/RadarChart.vue";
 import {
   Upload as ElUploadIcon, Document, Link, CopyDocument, Check, RefreshLeft,
@@ -16,6 +17,7 @@ const inputHub = ref<HTMLElement | null>(null);
 const retryAction = ref<(() => Promise<void>) | null>(null);
 const urlValue = ref("");
 const currentLang = ref<"zh" | "en">("zh");
+const promptTarget = ref<PromptTarget>("gpt");
 const copied = ref(false);
 const dragOver = ref(false);
 let unlistenTauriDrop: (() => void) | null = null;
@@ -48,18 +50,10 @@ onBeforeUnmount(() => {
 
 const promptText = computed({
   get() {
-    if (!store.result) return "";
-    return currentLang.value === "zh"
-      ? store.result.prompt_zh || store.result.prompt_en
-      : store.result.prompt_en || store.result.prompt_zh;
+    return getModelPrompt(store.result, promptTarget.value, currentLang.value);
   },
   set(value: string) {
-    if (!store.result) return;
-    if (currentLang.value === "zh") {
-      store.result.prompt_zh = value;
-    } else {
-      store.result.prompt_en = value;
-    }
+    setModelPrompt(store.result, promptTarget.value, currentLang.value, value);
   },
 });
 
@@ -463,7 +457,11 @@ function parseStructuredEdit(key: string, value: string) {
               <div class="flex items-center gap-2.5">
                 <div class="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-[13px] font-bold text-teal-300">2</div>
                 <span class="text-[16px] font-semibold text-white/90">完整提示词</span>
-                <el-radio-group v-model="currentLang" size="small" class="ml-3">
+                <el-radio-group v-model="promptTarget" size="small" class="ml-3">
+                  <el-radio-button value="gpt">GPT Image</el-radio-button>
+                  <el-radio-button value="nano">Nano Banana</el-radio-button>
+                </el-radio-group>
+                <el-radio-group v-model="currentLang" size="small" class="ml-2">
                   <el-radio-button value="zh">中文</el-radio-button>
                   <el-radio-button value="en">English</el-radio-button>
                 </el-radio-group>

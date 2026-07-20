@@ -32,6 +32,10 @@ export interface HistoryItem {
   quality_notes: string[];
   prompt_en: string;
   prompt_zh: string;
+  promptGptImageEn?: string;
+  promptGptImageZh?: string;
+  promptNanoBananaEn?: string;
+  promptNanoBananaZh?: string;
   qualityScore: number;
   qualityLabel: string;
   qualityBreakdown: Record<string, number>;

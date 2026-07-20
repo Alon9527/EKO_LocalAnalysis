@@ -5,6 +5,7 @@ import { useGalleryStore } from "@/stores/gallery";
 import { api } from "@/lib/api";
 import RadarChart from "@/components/RadarChart.vue";
 import AnalysisBreakdown from "@/components/materials/AnalysisBreakdown.vue";
+import { getModelPrompt, type PromptTarget } from "@/lib/model-prompts";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   Search, Star, StarFilled, Download, Delete, Close, CopyDocument, Check, Upload,
@@ -20,6 +21,7 @@ const dateFilter = ref("");
 const scoreFilter = ref<number | "">("");
 const copiedField = ref("");
 const promptTab = ref<"zh" | "en">("zh");
+const promptTarget = ref<PromptTarget>("gpt");
 const detailTab = ref<"prompt" | "breakdown">("prompt");
 const currentPage = ref(1);
 const pageSize = ref(24);
@@ -417,22 +419,22 @@ const detailDimensions = (item: any) => {
                     <el-tab-pane label="中文提示词" name="zh">
                       <div class="prompt-tab-toolbar">
                         <span class="text-[12px] text-white/38">可选取、复制完整内容</span>
-                        <el-button size="small" @click="copyText(store.detailItem.prompt_zh, 'zh')">
+                        <el-button size="small" @click="copyText(getModelPrompt(store.detailItem, promptTarget, 'zh'), 'zh')">
                           <el-icon class="mr-1"><Check v-if="copiedField === 'zh'" /><CopyDocument v-else /></el-icon>
                           {{ copiedField === 'zh' ? '已复制' : '复制' }}
                         </el-button>
                       </div>
-                      <textarea class="prompt-copy-field" :value="store.detailItem.prompt_zh" readonly spellcheck="false" />
+                      <textarea class="prompt-copy-field" :value="getModelPrompt(store.detailItem, promptTarget, 'zh')" readonly spellcheck="false" />
                     </el-tab-pane>
                     <el-tab-pane label="English Prompt" name="en">
                       <div class="prompt-tab-toolbar">
                         <span class="text-[12px] text-white/38">Select and copy the full prompt</span>
-                        <el-button size="small" @click="copyText(store.detailItem.prompt_en, 'en')">
+                        <el-button size="small" @click="copyText(getModelPrompt(store.detailItem, promptTarget, 'en'), 'en')">
                           <el-icon class="mr-1"><Check v-if="copiedField === 'en'" /><CopyDocument v-else /></el-icon>
                           {{ copiedField === 'en' ? '已复制' : '复制' }}
                         </el-button>
                       </div>
-                      <textarea class="prompt-copy-field" :value="store.detailItem.prompt_en" readonly spellcheck="false" />
+                      <textarea class="prompt-copy-field" :value="getModelPrompt(store.detailItem, promptTarget, 'en')" readonly spellcheck="false" />
                     </el-tab-pane>
                   </el-tabs>
                 </div>
@@ -474,6 +476,13 @@ const detailDimensions = (item: any) => {
 </template>
 
 <style scoped>
+.prompt-target-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
+
 :deep(.el-card) {
   background-color: rgba(14, 17, 23, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.09);

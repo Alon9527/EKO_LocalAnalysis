@@ -106,6 +106,14 @@ pub struct HistoryItem {
     pub quality_notes: Option<Vec<String>>,
     pub prompt_en: Option<String>,
     pub prompt_zh: Option<String>,
+    #[serde(rename = "promptGptImageEn", default)]
+    pub prompt_gpt_image_en: Option<String>,
+    #[serde(rename = "promptGptImageZh", default)]
+    pub prompt_gpt_image_zh: Option<String>,
+    #[serde(rename = "promptNanoBananaEn", default)]
+    pub prompt_nano_banana_en: Option<String>,
+    #[serde(rename = "promptNanoBananaZh", default)]
+    pub prompt_nano_banana_zh: Option<String>,
     #[serde(rename = "qualityScore", default)]
     pub quality_score: u32,
     #[serde(rename = "qualityLabel", default)]
@@ -183,6 +191,10 @@ pub fn get_history(query: HistoryQuery) -> Result<serde_json::Value, Box<dyn std
         items.retain(|i| {
             i.prompt_en.as_deref().unwrap_or("").to_lowercase().contains(&kw_lower)
                 || i.prompt_zh.as_deref().unwrap_or("").to_lowercase().contains(&kw_lower)
+                || i.prompt_gpt_image_en.as_deref().unwrap_or("").to_lowercase().contains(&kw_lower)
+                || i.prompt_gpt_image_zh.as_deref().unwrap_or("").to_lowercase().contains(&kw_lower)
+                || i.prompt_nano_banana_en.as_deref().unwrap_or("").to_lowercase().contains(&kw_lower)
+                || i.prompt_nano_banana_zh.as_deref().unwrap_or("").to_lowercase().contains(&kw_lower)
                 || i.file_name.to_lowercase().contains(&kw_lower)
         });
     }

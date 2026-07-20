@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import { api } from "@/lib/api";
 import { useSettingsStore } from "@/stores/settings";
 import { uid, pathBasename } from "@/lib/utils";
+import { getModelPrompt, setModelPrompt, type PromptTarget } from "@/lib/model-prompts";
 import {
   Plus, FolderOpened, VideoPlay, VideoPause, Close, Check, Loading,
   Clock, EditPen, User, Picture as PicIcon, Sunny, Camera, CopyDocument, Aim
@@ -29,21 +30,14 @@ const failedCount = ref(0);
 const currentItem = ref<BatchItem | null>(null);
 const avgTime = ref(0);
 const currentLang = ref<"zh" | "en">("zh");
+const promptTarget = ref<PromptTarget>("gpt");
 
 const promptText = computed({
   get() {
-    const r = currentItem.value?.result;
-    if (!r) return "";
-    return currentLang.value === "zh" ? (r.prompt_zh || r.prompt_en) : (r.prompt_en || r.prompt_zh);
+    return getModelPrompt(currentItem.value?.result, promptTarget.value, currentLang.value);
   },
   set(value: string) {
-    const r = currentItem.value?.result;
-    if (!r) return;
-    if (currentLang.value === "zh") {
-      r.prompt_zh = value;
-    } else {
-      r.prompt_en = value;
-    }
+    setModelPrompt(currentItem.value?.result, promptTarget.value, currentLang.value, value);
   },
 });
 
@@ -406,10 +400,16 @@ function parseStructuredEdit(key: string, value: string) {
           <div v-if="currentItem?.result" class="space-y-6">
             <!-- Top: lang toggle + copy -->
             <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <el-radio-group v-model="promptTarget" size="default">
+                  <el-radio-button value="gpt">GPT Image</el-radio-button>
+                  <el-radio-button value="nano">Nano Banana</el-radio-button>
+                </el-radio-group>
               <el-radio-group v-model="currentLang" size="default">
                 <el-radio-button value="zh">中文</el-radio-button>
                 <el-radio-button value="en">English</el-radio-button>
               </el-radio-group>
+              </div>
               <el-button size="default" @click="copyPromptBatch">
                 <el-icon class="mr-1"><CopyDocument /></el-icon>复制
               </el-button>
