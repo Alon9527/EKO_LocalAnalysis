@@ -1,11 +1,11 @@
 {
-    "version":  "1.2.5",
-    "notes":  "Add separate GPT Image and Nano Banana reverse prompts.",
-    "pub_date":  "2026-07-20T09:18:59Z",
+    "version":  "1.2.6",
+    "notes":  "Fix updater install failure caused by proxied Tauri update objects.",
+    "pub_date":  "2026-07-20T09:49:03Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djkySnhRSlk0TXEwSWh2SlhQTlRDOW8vc1VURFYzc3Q3VFVQR0o1dGlGQVA4d25XellhcWIzNEtBL1pqUnVRekRrb0pIaFAyYnhjZzAzVHJ1cEFxS1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTM4Njg5CWZpbGU6RUtPXzEuMi41X3g2NC1zZXR1cC5leGUKZ1d6RHVhc2kzbWhxNjFrdEdHYVliL0ZGUko2dTJuQS9QV0RXalRmcXBDaTRDbnBlNTI0SjRWcmZ5VUlPNDRGb2h6T21Td2VEbkdRb0FkdXFmZnFVRGc9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.5/EKO_1.2.5_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djJiSGI1cERoUTRnS1Rpcm5kNWpXNHZmZkkyb3d6RklrYkZjMG1TYU10R09IYVlYTGt0cXprY0lobVFkVVlPTVNHWDBDOTRjOEovZjE3eEdlM01FcWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTQwOTA3CWZpbGU6RUtPXzEuMi42X3g2NC1zZXR1cC5leGUKdWRIanFUeXlLYkdIcTJSZCszdlVOVnAvclMzcktheHJrUWY4Y2lvTTc0WkZ0ZTVrT1hrVE9iQjJteThoQnQxZnhiZC9ncmUxcFpUMXlmQWtlblV5QlE9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.6/EKO_1.2.6_x64-setup.exe"
                                          }
                   }
 }

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { markRaw, ref, shallowRef } from "vue";
 
 const isTauri = typeof window !== "undefined" && !!(window as any).__TAURI_INTERNALS__;
 
@@ -9,7 +9,7 @@ export const useUpdateStore = defineStore("update", () => {
   const version = ref("");
   const notes = ref("");
   const error = ref("");
-  const updateRef = ref<any>(null);
+  const updateRef = shallowRef<any>(null);
 
   async function check(silent = true) {
     if (!isTauri) return null;
@@ -18,7 +18,7 @@ export const useUpdateStore = defineStore("update", () => {
     try {
       const { check } = await import("@tauri-apps/plugin-updater");
       const update = await check();
-      updateRef.value = update;
+      updateRef.value = update ? markRaw(update) : null;
       updateAvailable.value = !!update;
       version.value = update?.version || "";
       notes.value = update?.body || "";

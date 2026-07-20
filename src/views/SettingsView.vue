@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { markRaw, ref, shallowRef, onMounted } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { useGalleryStore } from "@/stores/gallery";
 import { useUpdateStore } from "@/stores/update";
@@ -21,7 +21,7 @@ const downloadProgress = ref(0);
 const downloadStatus = ref("");
 const downloadVisible = ref(false);
 const updateDialogVisible = ref(false);
-const pendingUpdate = ref<any>(null);
+const pendingUpdate = shallowRef<any>(null);
 const installingUpdate = ref(false);
 
 async function checkUpdate() {
@@ -37,7 +37,7 @@ async function checkUpdate() {
       updateStore.clear();
       return;
     }
-    pendingUpdate.value = update;
+    pendingUpdate.value = markRaw(update);
     updateDialogVisible.value = true;
   } catch (err: any) {
     ElMessage.error("检查更新失败: " + (err?.message || err));
