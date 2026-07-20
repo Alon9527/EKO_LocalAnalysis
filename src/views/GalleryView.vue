@@ -39,6 +39,11 @@ async function loadGallery() {
   await syncHistoryFromRoute();
 }
 
+async function refreshGallery() {
+  await loadGallery();
+  ElMessage.success("历史记录已刷新");
+}
+
 onMounted(loadGallery);
 
 watch(() => route.query.history, (historyId) => {
@@ -221,6 +226,16 @@ const detailDimensions = (item: any) => {
       </el-button>
 
       <div class="flex-1" />
+
+      <el-button
+        data-testid="refresh-history"
+        size="default"
+        plain
+        :loading="store.loading"
+        @click="refreshGallery"
+      >
+        <el-icon class="mr-1"><RefreshLeft /></el-icon>刷新
+      </el-button>
 
       <template v-if="isExportPage">
         <el-button

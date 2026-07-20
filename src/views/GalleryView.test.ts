@@ -116,4 +116,34 @@ describe("GalleryView direct history navigation", () => {
     expect(router.currentRoute.value.query).toEqual({ keyword: "chair" });
     wrapper.unmount();
   });
+  it("refreshes history records from the toolbar", async () => {
+    const first = historyItem();
+    const second = { ...historyItem(), id: "history-2", fileName: "new-image.jpg" };
+    const getHistory = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [first], total: 1 })
+      .mockResolvedValueOnce({ items: [first, second], total: 2 });
+    vi.spyOn(api, "getHistory").mockImplementation(getHistory);
+    vi.spyOn(api, "readThumbnailAsDataUrl").mockResolvedValue("data:image/png;base64,AA==");
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/gallery", component: GalleryView }],
+    });
+    await router.push("/gallery");
+    await router.isReady();
+    const wrapper = shallowMount(GalleryView, {
+      global: { plugins: [pinia, router, ElementPlus], stubs: { teleport: true, RadarChart: true } },
+    });
+    await flushPromises();
+
+    expect(useGalleryStore().items).toHaveLength(1);
+    await wrapper.get('[data-testid="refresh-history"]').trigger("click");
+    await flushPromises();
+
+    expect(getHistory).toHaveBeenCalledTimes(2);
+    expect(useGalleryStore().items.map((item) => item.id)).toEqual(["history-1", "history-2"]);
+    wrapper.unmount();
+  });
 });
