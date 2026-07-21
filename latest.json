@@ -1,11 +1,11 @@
 {
-    "version":  "1.2.6",
-    "notes":  "Fix updater install failure caused by proxied Tauri update objects.",
-    "pub_date":  "2026-07-20T09:49:03Z",
+    "version":  "1.2.7",
+    "notes":  "Add GPT Image and Nano Banana prompt switcher to history detail.",
+    "pub_date":  "2026-07-21T04:10:05Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djJiSGI1cERoUTRnS1Rpcm5kNWpXNHZmZkkyb3d6RklrYkZjMG1TYU10R09IYVlYTGt0cXprY0lobVFkVVlPTVNHWDBDOTRjOEovZjE3eEdlM01FcWd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NTQwOTA3CWZpbGU6RUtPXzEuMi42X3g2NC1zZXR1cC5leGUKdWRIanFUeXlLYkdIcTJSZCszdlVOVnAvclMzcktheHJrUWY4Y2lvTTc0WkZ0ZTVrT1hrVE9iQjJteThoQnQxZnhiZC9ncmUxcFpUMXlmQWtlblV5QlE9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.6/EKO_1.2.6_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djU1UGlCbno1clgvY3N1UU9nVGJCMlIybFBXNk1BMUtPVEMxdXhaZHFsUEdQdEhVQ0lTUWhYY1Y4ejdDMjNVK2xiemxBcTV1R3cyQTMvTzdCNkNPY1FjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NjA2OTM5CWZpbGU6RUtPXzEuMi43X3g2NC1zZXR1cC5leGUKVi9IQ25KUjdraFU0M0hkM3hTRm00UjJYb0tEbGpab0lNTHdnWWhLbWo5Q1lZS1lKZUNjelBKMHRYUE5FQzdvb3RqQi9nSkpLalJodmpZSm5BSTVZQnc9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.7/EKO_1.2.7_x64-setup.exe"
                                          }
                   }
 }
