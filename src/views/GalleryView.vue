@@ -65,6 +65,7 @@ function onDetailVisibilityChange(visible: boolean) {
 
 watch(() => store.detailItem?.id, () => {
   detailTab.value = "prompt";
+  promptTarget.value = "gpt";
   promptTab.value = "zh";
   copiedField.value = "";
 });
@@ -415,6 +416,26 @@ const detailDimensions = (item: any) => {
             <el-tabs v-model="detailTab" class="detail-mode-tabs">
               <el-tab-pane label="完整 Prompt" name="prompt">
                 <div class="prompt-tabs-wrap">
+                  <div class="prompt-target-row" aria-label="Prompt target">
+                    <button
+                      data-testid="prompt-target-gpt"
+                      type="button"
+                      class="prompt-target-button"
+                      :class="{ 'is-active': promptTarget === 'gpt' }"
+                      @click="promptTarget = 'gpt'"
+                    >
+                      GPT Image
+                    </button>
+                    <button
+                      data-testid="prompt-target-nano"
+                      type="button"
+                      class="prompt-target-button"
+                      :class="{ 'is-active': promptTarget === 'nano' }"
+                      @click="promptTarget = 'nano'"
+                    >
+                      Nano Banana
+                    </button>
+                  </div>
                   <el-tabs v-model="promptTab" class="prompt-tabs">
                     <el-tab-pane label="中文提示词" name="zh">
                       <div class="prompt-tab-toolbar">
@@ -424,7 +445,7 @@ const detailDimensions = (item: any) => {
                           {{ copiedField === 'zh' ? '已复制' : '复制' }}
                         </el-button>
                       </div>
-                      <textarea class="prompt-copy-field" :value="getModelPrompt(store.detailItem, promptTarget, 'zh')" readonly spellcheck="false" />
+                      <textarea data-testid="detail-prompt-textarea" class="prompt-copy-field" :value="getModelPrompt(store.detailItem, promptTarget, 'zh')" readonly spellcheck="false" />
                     </el-tab-pane>
                     <el-tab-pane label="English Prompt" name="en">
                       <div class="prompt-tab-toolbar">
@@ -434,7 +455,7 @@ const detailDimensions = (item: any) => {
                           {{ copiedField === 'en' ? '已复制' : '复制' }}
                         </el-button>
                       </div>
-                      <textarea class="prompt-copy-field" :value="getModelPrompt(store.detailItem, promptTarget, 'en')" readonly spellcheck="false" />
+                      <textarea data-testid="detail-prompt-textarea-en" class="prompt-copy-field" :value="getModelPrompt(store.detailItem, promptTarget, 'en')" readonly spellcheck="false" />
                     </el-tab-pane>
                   </el-tabs>
                 </div>
@@ -477,11 +498,31 @@ const detailDimensions = (item: any) => {
 
 <style scoped>
 .prompt-target-row {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
 }
-
+.prompt-target-button {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+.prompt-target-button:hover {
+  border-color: rgba(45, 212, 191, 0.38);
+  color: rgba(255, 255, 255, 0.88);
+}
+.prompt-target-button.is-active {
+  border-color: rgba(45, 212, 191, 0.72);
+  background: rgba(20, 184, 166, 0.2);
+  color: #5eead4;
+}
 
 :deep(.el-card) {
   background-color: rgba(14, 17, 23, 0.78);

@@ -7,6 +7,25 @@ import { api, type HistoryItem } from "@/lib/api";
 import { useGalleryStore } from "@/stores/gallery";
 import GalleryView from "@/views/GalleryView.vue";
 
+const TabsStub = {
+  name: "ElTabs",
+  props: ["modelValue"],
+  emits: ["update:modelValue"],
+  template: '<div><slot /></div>',
+};
+
+const TabPaneStub = {
+  name: "ElTabPane",
+  props: ["label", "name"],
+  template: '<section><span>{{ label }}</span><slot /></section>',
+};
+const DrawerStub = {
+  name: "ElDrawer",
+  props: ["modelValue"],
+  emits: ["update:modelValue"],
+  template: '<section v-if="modelValue"><slot /></section>',
+};
+
 function historyItem(): HistoryItem {
   return {
     id: "history-1",
@@ -49,7 +68,7 @@ describe("GalleryView direct history navigation", () => {
     const wrapper = shallowMount(GalleryView, {
       global: {
         plugins: [pinia, router, ElementPlus],
-        stubs: { teleport: true, RadarChart: true },
+        stubs: { teleport: true, RadarChart: true, ElDrawer: DrawerStub, ElTabs: TabsStub, ElTabPane: TabPaneStub },
       },
     });
     await flushPromises();
@@ -69,7 +88,7 @@ describe("GalleryView direct history navigation", () => {
     await router.push("/gallery?history=history-1");
     await router.isReady();
     const wrapper = shallowMount(GalleryView, {
-      global: { plugins: [pinia, router, ElementPlus], stubs: { teleport: true, RadarChart: true } },
+      global: { plugins: [pinia, router, ElementPlus], stubs: { teleport: true, RadarChart: true, ElDrawer: DrawerStub, ElTabs: TabsStub, ElTabPane: TabPaneStub } },
     });
     await flushPromises();
 
@@ -134,7 +153,7 @@ describe("GalleryView direct history navigation", () => {
     await router.push("/gallery");
     await router.isReady();
     const wrapper = shallowMount(GalleryView, {
-      global: { plugins: [pinia, router, ElementPlus], stubs: { teleport: true, RadarChart: true } },
+      global: { plugins: [pinia, router, ElementPlus], stubs: { teleport: true, RadarChart: true, ElDrawer: DrawerStub, ElTabs: TabsStub, ElTabPane: TabPaneStub } },
     });
     await flushPromises();
 
@@ -144,6 +163,28 @@ describe("GalleryView direct history navigation", () => {
 
     expect(getHistory).toHaveBeenCalledTimes(2);
     expect(useGalleryStore().items.map((item) => item.id)).toEqual(["history-1", "history-2"]);
+    wrapper.unmount();
+  });
+  it("switches history detail prompts between GPT Image and Nano Banana", async () => {
+    const item = {
+      ...historyItem(),
+      prompt_en: "legacy en",
+      prompt_zh: "legacy zh",
+      promptGptImageEn: "gpt image prompt en",
+      promptGptImageZh: "gpt image prompt zh",
+      promptNanoBananaEn: "nano banana prompt en",
+      promptNanoBananaZh: "nano banana prompt zh",
+    };
+    const { wrapper } = await mountAtHistory(vi.fn().mockResolvedValue({ items: [item], total: 1 }));
+
+    expect(wrapper.text()).toContain("GPT Image");
+    expect(wrapper.text()).toContain("Nano Banana");
+    expect((wrapper.get('[data-testid="detail-prompt-textarea"]').element as HTMLTextAreaElement).value).toBe("gpt image prompt zh");
+
+    await wrapper.get('[data-testid="prompt-target-nano"]').trigger("click");
+    await flushPromises();
+
+    expect((wrapper.get('[data-testid="detail-prompt-textarea"]').element as HTMLTextAreaElement).value).toBe("nano banana prompt zh");
     wrapper.unmount();
   });
 });
