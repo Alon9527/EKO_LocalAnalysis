@@ -1,11 +1,11 @@
 {
-    "version":  "1.3.0",
-    "notes":  "EKO v1.3.0: add Eagle Inspector plugin support and allow Eagle plugin bridge origins.",
-    "pub_date":  "2026-07-22T06:16:25Z",
+    "version":  "1.3.1",
+    "notes":  "EKO v1.3.1: improve history delete confirmation visibility and button spacing.",
+    "pub_date":  "2026-07-22T10:38:38Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3dis3OXEvelU2dGkrVnc4bjJTZXZJazhvazlDUHpnQlRkVE52L0ZWZ1VGZE9VOE5JbHUwbWlIOXVydUxLTEZhcFpHcVpZMmJPSWlHS3RWMUhocXpoL3dBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NzAwOTU0CWZpbGU6RUtPXzEuMy4wX3g2NC1zZXR1cC5leGUKZW55RlhJZGt0SmJjbVZxSzY4K2l2TXVlckVScVhuQXNtS2Jka3RnVmdhaUQ4aGEwaUFQT1Y5TEloRVBCR1ZLdzE5ejc4eU92SldlU2NtRWZMU2U4QUE9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.3.0/EKO_1.3.0_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3dis5b0FGT21sY2QwZE5oSTdtbWhqY2hQVDgyU1NSd3ZDZFdueGxob09DcTB2ZjdWalllVjVZWnpBYVFoWWhrR2JQVzJwaCtya3pNM3hNL1dFdmo4Q1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0NzE2Njk5CWZpbGU6RUtPXzEuMy4xX3g2NC1zZXR1cC5leGUKWi9NcG5PTWZoR0tjMk85L0owOFd5bHV6R0M4eGgwSlNlUWlOM1Zsb3Y1TGp4RklaR2l5RGlkc3FPbFpwTjlrelNhQ3pMM2dqMWFiVUQxSnREOTVHRGc9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.3.1/EKO_1.3.1_x64-setup.exe"
                                          }
                   }
 }
