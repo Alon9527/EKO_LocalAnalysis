@@ -1,0 +1,19 @@
+{
+  "id": "eko-image-reverse-inspector",
+  "version": "0.1.0",
+  "platform": "all",
+  "arch": "all",
+  "name": "EKO 图片反推",
+  "logo": "/logo.png",
+  "keywords": ["EKO", "Prompt", "AI", "反推", "Nano Banana"],
+  "devTools": false,
+  "preview": {
+    "jpg,jpeg,png,webp,gif,bmp": {
+      "inspector": {
+        "path": "index.html",
+        "height": 560,
+        "multiSelect": false
+      }
+    }
+  }
+}

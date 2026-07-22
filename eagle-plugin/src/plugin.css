@@ -1,0 +1,36 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #10131a;
+  color: rgba(255, 255, 255, 0.86);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: transparent; }
+button, textarea { font: inherit; }
+.panel { padding: 14px; min-height: 100vh; background: #10131a; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+h1 { margin: 0; font-size: 16px; line-height: 1.3; }
+p { margin: 0; }
+.header p { margin-top: 4px; max-width: 260px; color: rgba(255,255,255,.48); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-button { width: 30px; height: 30px; border-radius: 8px; padding: 0; }
+.preview, .empty-preview { width: 100%; height: 148px; border-radius: 10px; margin-bottom: 12px; background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.08); }
+.preview { object-fit: cover; display: block; }
+.empty-preview { display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.38); font-size: 12px; }
+.actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 10px; }
+button { border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.055); color: rgba(255,255,255,.78); border-radius: 9px; min-height: 34px; padding: 0 12px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: rgba(45,212,191,.46); color: white; }
+button:disabled { opacity: .48; cursor: not-allowed; }
+button.primary, .tabs button.active, button.copy { background: rgba(20,184,166,.2); border-color: rgba(45,212,191,.58); color: #5eead4; font-weight: 700; }
+.status { min-height: 18px; margin: 0 0 12px; color: rgba(255,255,255,.52); font-size: 12px; line-height: 1.5; }
+.status.is-error { color: #ff8a8a; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: 8px; }
+.tabs { display: grid; gap: 8px; margin-bottom: 8px; }
+.model-tabs { grid-template-columns: 1fr 1fr; }
+.lang-tabs { grid-template-columns: 1fr 1fr; }
+.prompt-label { display: block; margin: 8px 0 6px; color: rgba(255,255,255,.62); font-size: 12px; font-weight: 700; }
+textarea { width: 100%; min-height: 150px; resize: vertical; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px; background: rgba(255,255,255,.055); color: rgba(255,255,255,.84); font-size: 12px; line-height: 1.65; outline: none; }
+textarea:focus { border-color: rgba(45,212,191,.5); }
+.copy { width: 100%; margin-top: 8px; }
+body[theme="LIGHT"], body[theme="light"] { color-scheme: light; background: #f7f8fb; color: rgba(17,24,39,.88); }
+body[theme="LIGHT"] .panel, body[theme="light"] .panel { background: #f7f8fb; }
+body[theme="LIGHT"] .header p, body[theme="light"] .header p, body[theme="LIGHT"] .status, body[theme="light"] .status { color: rgba(17,24,39,.56); }
+body[theme="LIGHT"] button, body[theme="light"] button, body[theme="LIGHT"] textarea, body[theme="light"] textarea, body[theme="LIGHT"] .preview, body[theme="light"] .preview, body[theme="LIGHT"] .empty-preview, body[theme="light"] .empty-preview { background: white; border-color: rgba(17,24,39,.12); color: rgba(17,24,39,.78); }

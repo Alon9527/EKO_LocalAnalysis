@@ -244,6 +244,9 @@ fn is_allowed_origin(origin: Option<&str>) -> bool {
         Some(origin) => {
             origin.starts_with("chrome-extension://")
                 || origin.starts_with("tauri://")
+                || origin.starts_with("file://")
+                || origin.starts_with("eagle://")
+                || origin.starts_with("app://")
                 || origin.starts_with("http://127.0.0.1:")
                 || origin.starts_with("http://localhost:")
         }
@@ -363,5 +366,11 @@ mod tests {
     fn public_http_image_urls_are_allowed() {
         assert!(validate_image_url_shape("https://example.com/image.jpg").is_ok());
         assert!(validate_image_url_shape("http://203.0.113.10/image.jpg").is_ok());
+    }
+    #[test]
+    fn eagle_plugin_origins_are_allowed() {
+        assert!(is_allowed_origin(Some("file://")));
+        assert!(is_allowed_origin(Some("eagle://plugin")));
+        assert!(is_allowed_origin(Some("app://eagle-plugin")));
     }
 }
