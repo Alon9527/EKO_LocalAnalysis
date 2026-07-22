@@ -147,6 +147,7 @@ async function handleFileClick() {
 async function analyzeFilePath(filePath: string) {
   retryAction.value = () => analyzeFilePath(filePath);
   preparing.value = true;
+  store.setPreparing("正在读取图片...");
   try {
     const dataUrl = await api.readFileAsDataUrl(filePath);
     await store.analyze({ id: uid(), sourceType: "file", filePath, fileName: pathBasename(filePath) }, dataUrl);
@@ -158,6 +159,7 @@ async function analyzeFilePath(filePath: string) {
 async function analyzeDataUrl(file: File, dataUrl: string) {
   retryAction.value = () => analyzeDataUrl(file, dataUrl);
   preparing.value = true;
+  store.setPreparing("正在处理图片...");
   try {
     const base64 = dataUrl.split(",")[1];
     const mimeType = dataUrl.split(";")[0].split(":")[1] || file.type || "image/png";
@@ -342,12 +344,12 @@ function parseStructuredEdit(key: string, value: string) {
       <div class="w-full max-w-[480px] text-center">
         <el-progress
           type="circle"
-          :percentage="preparing ? 2 : store.progress.percent"
+          :percentage="store.progress.percent"
           :width="120"
           :stroke-width="6"
           color="#2dd4bf"
         />
-        <p class="text-[16px] font-semibold text-white/75 mt-6">{{ preparing ? "正在读取图片..." : store.progress.text }}</p>
+        <p class="text-[16px] font-semibold text-white/75 mt-6">{{ store.progress.text }}</p>
       </div>
     </div>
 

@@ -8,6 +8,24 @@ export interface ProgressState {
   text: string;
 }
 
+const ANALYSIS_STAGES = [
+  { at: 5, text: "准备识别..." },
+  { at: 16, text: "正在读取图片..." },
+  { at: 28, text: "上传图片到模型..." },
+  { at: 44, text: "调用 AI 模型..." },
+  { at: 62, text: "分析画面结构..." },
+  { at: 78, text: "生成双模型提示词..." },
+  { at: 90, text: "整理分析结果..." },
+];
+
+function stageText(percent: number) {
+  let text = ANALYSIS_STAGES[0].text;
+  for (const stage of ANALYSIS_STAGES) {
+    if (percent >= stage.at) text = stage.text;
+  }
+  return text;
+}
+
 export const useAnalysisStore = defineStore("analysis", () => {
   const progress = ref<ProgressState>({ percent: 0, text: "" });
   const analyzing = ref(false);
@@ -32,23 +50,20 @@ export const useAnalysisStore = defineStore("analysis", () => {
     }
 
     analyzing.value = true;
-    progress.value = { percent: 5, text: "准备识别..." };
+    progress.value = { percent: 5, text: stageText(5) };
 
-    // Simulated progress while waiting for API response
     let progressTimer: ReturnType<typeof setInterval> | null = null;
-    const stages = [
-      { p: 20, t: "上传图片..." },
-      { p: 40, t: "调用 AI 模型..." },
-      { p: 65, t: "分析图像内容..." },
-      { p: 85, t: "生成提示词..." },
-    ];
-    let stageIdx = 0;
     progressTimer = setInterval(() => {
-      if (stageIdx < stages.length && analyzing.value) {
-        progress.value = { percent: stages[stageIdx].p, text: stages[stageIdx].t };
-        stageIdx++;
+      if (!analyzing.value) return;
+      const current = progress.value.percent;
+      if (current >= 92) {
+        progress.value = { percent: 92, text: stageText(92) };
+        return;
       }
-    }, 2500);
+      const increment = current < 30 ? 3 : current < 70 ? 2 : 1;
+      const next = Math.min(92, current + increment);
+      progress.value = { percent: next, text: stageText(next) };
+    }, 350);
 
     try {
       const res = await api.analyzeImage(task, settingsStore.settings);
@@ -63,6 +78,11 @@ export const useAnalysisStore = defineStore("analysis", () => {
     }
   }
 
+  function setPreparing(text = "正在读取图片...") {
+    analyzing.value = false;
+    progress.value = { percent: 2, text };
+  }
+
   function reset() {
     progress.value = { percent: 0, text: "" };
     analyzing.value = false;
@@ -71,5 +91,5 @@ export const useAnalysisStore = defineStore("analysis", () => {
     previewSrc.value = "";
   }
 
-  return { progress, analyzing, result, error, previewSrc, analyze, reset };
+  return { progress, analyzing, result, error, previewSrc, analyze, setPreparing, reset };
 });
