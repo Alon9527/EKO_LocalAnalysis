@@ -146,7 +146,7 @@ Core rules:
 
 Model-specific prompt rules:
 - GPT Image: write one dense production-ready descriptive prompt. Emphasize subject, environment, lighting, composition, materials, camera/lens, atmosphere, and technical finish. Keep it natural, compact, and directly usable for GPT Image. Keep it under 480 words.
-- Nano Banana Pro / Gemini image generation: write an instruction-style reference reconstruction prompt. Start with: Recreate the reference image closely. Explicitly preserve subject identity, object count, spatial layout, camera angle, framing, perspective, crop, aspect ratio, lighting direction, shadow softness, color palette, material textures, visible text, and atmosphere. Then list the major visual elements in stable order from foreground to background. Use precise geometric and relational language instead of style-only keywords. Keep it under 520 words.
+- Nano Banana Pro / Gemini image generation: write a standalone text-to-image prompt that can recreate the analyzed image without needing the original image at generation time. Start with a direct scene goal such as: Tightly recreate this composition as a text-to-image generation. Do not write prompts that depend on uploading or viewing the reference image again. Explicitly lock the aspect ratio, camera angle, lens feel, perspective height, crop, subject identity, object count, exact spatial layout, foreground left, foreground right, midground left, midground right, central midground, background, lighting direction, shadow softness, color palette, material textures, visible text, reflections, and atmosphere. Describe all important objects by position, size relationship, color, shape, material, and relationship to neighboring objects. Use stable foreground-to-background ordering and precise geometric language so the prompt is self-contained. For nano_banana_pro.prompt_zh, keep a faithful Chinese version with clear sections such as 前景左侧, 前景右侧, 中景, 背景 when those spatial zones exist. Keep it under 620 words.
 
 Return JSON with exactly this structure:
 {
@@ -440,5 +440,19 @@ mod tests {
 
         assert_eq!(model_prompt_text(&result, "gpt_image_2", "prompt_en"), Some("GPT prompt".to_string()));
         assert_eq!(model_prompt_text(&result, "nano_banana_pro", "prompt_en"), Some("Legacy prompt".to_string()));
+    }
+    #[test]
+    fn nano_instruction_requires_standalone_text_to_image_reconstruction() {
+        let instruction = build_inference_instruction();
+
+        assert!(instruction.contains("standalone text-to-image prompt"));
+        assert!(instruction.contains("without needing the original image"));
+        assert!(instruction.contains("foreground left"));
+        assert!(instruction.contains("foreground right"));
+        assert!(instruction.contains("midground"));
+        assert!(instruction.contains("background"));
+        assert!(instruction.contains("object count"));
+        assert!(instruction.contains("spatial layout"));
+        assert!(instruction.contains("aspect ratio"));
     }
 }
