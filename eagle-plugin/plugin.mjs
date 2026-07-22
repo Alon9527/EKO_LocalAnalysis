@@ -4,6 +4,7 @@ import {
   escapeHtml,
   normalizeError,
   promptForItem,
+  selectedItemKey,
 } from "./src/eagle-utils.mjs";
 
 const fs = window.require ? window.require("fs") : null;
@@ -17,6 +18,8 @@ const state = {
   busy: false,
   status: "等待选择图片",
   error: "",
+  selectionKey: "",
+  selectionTimer: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -75,18 +78,45 @@ function bindEvents() {
   $("#copyButton")?.addEventListener("click", copyPrompt);
 }
 
-async function refreshSelection() {
-  state.error = "";
+async function refreshSelection(options = {}) {
+  const silent = Boolean(options.silent);
+  if (!silent) state.error = "";
   try {
     const selected = await eagle.item.getSelected();
-    state.selectedItem = Array.isArray(selected) ? selected[0] : selected;
+    const nextItem = Array.isArray(selected) ? selected[0] : selected;
+    const nextKey = selectedItemKey(nextItem);
+    const changed = nextKey !== state.selectionKey;
+    if (!changed && silent) return;
+
+    state.selectedItem = nextItem || null;
+    state.selectionKey = nextKey;
+    if (changed) {
+      state.resultItem = null;
+      state.error = "";
+    }
     state.status = state.selectedItem ? "已选择图片，可开始反推" : "请选择一张图片";
+    render();
   } catch (error) {
-    state.error = normalizeError(error);
+    if (!silent) {
+      state.error = normalizeError(error);
+      render();
+    }
   }
-  render();
 }
 
+function startSelectionWatcher() {
+  if (state.selectionTimer) clearInterval(state.selectionTimer);
+  state.selectionTimer = setInterval(() => {
+    if (!state.busy && window.eagle?.item?.getSelected) {
+      refreshSelection({ silent: true });
+    }
+  }, 700);
+
+  window.addEventListener("focus", () => refreshSelection({ silent: true }));
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshSelection({ silent: true });
+  });
+}
 function requestJson(method, path, body) {
   return new Promise((resolve, reject) => {
     if (!http) return reject(new Error("Eagle 插件无法访问 Node http 模块"));
@@ -181,4 +211,5 @@ window.addEventListener("DOMContentLoaded", async () => {
     eagle.onThemeChanged((nextTheme) => document.body.setAttribute("theme", nextTheme || "dark"));
   } catch {}
   await refreshSelection();
+  startSelectionWatcher();
 });

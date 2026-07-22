@@ -11,6 +11,10 @@ const IMAGE_MIME_BY_EXT = {
 
 export const BRIDGE_BASE = "http://127.0.0.1:17621";
 
+export function selectedItemKey(item) {
+  return item ? String(item.id || item.filePath || item.fileURL || item.thumbnailURL || "") : "";
+}
+
 export function mimeFromPath(filePath = "") {
   const ext = String(filePath).split(".").pop()?.toLowerCase() || "png";
   return IMAGE_MIME_BY_EXT[ext] || "image/png";

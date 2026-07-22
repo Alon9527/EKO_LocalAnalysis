@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAnalyzePayload, mimeFromPath, promptForItem, normalizeError } from "./eagle-utils.mjs";
+import { buildAnalyzePayload, mimeFromPath, promptForItem, normalizeError, selectedItemKey } from "./eagle-utils.mjs";
 
 describe("Eagle plugin utils", () => {
   it("builds a base64 analyze payload from a selected Eagle item", () => {
@@ -29,6 +29,11 @@ describe("Eagle plugin utils", () => {
     expect(promptForItem({ prompt_zh: "legacy zh" }, "nano", "zh")).toBe("legacy zh");
   });
 
+  it("builds stable selection keys for Eagle selection polling", () => {
+    expect(selectedItemKey({ id: "item-1", filePath: "C:/images/a.jpg" })).toBe("item-1");
+    expect(selectedItemKey({ filePath: "C:/images/a.jpg" })).toBe("C:/images/a.jpg");
+    expect(selectedItemKey(null)).toBe("");
+  });
   it("normalizes file mime types and bridge connection errors", () => {
     expect(mimeFromPath("demo.webp")).toBe("image/webp");
     expect(mimeFromPath("demo.jpeg")).toBe("image/jpeg");
