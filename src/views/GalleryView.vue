@@ -136,7 +136,13 @@ function toggleSelectAll() {
 async function deleteSelected() {
   if (!store.selectedCount) return;
   try {
-    await ElMessageBox.confirm(`确定删除选中的 ${store.selectedCount} 条记录吗？`, "删除确认", { type: "warning" });
+    await ElMessageBox.confirm(`确定删除选中的 ${store.selectedCount} 条记录吗？`, "删除确认", {
+      type: "warning",
+      customClass: "history-delete-confirm",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+      confirmButtonClass: "el-button--danger",
+    });
     await store.deleteSelected();
   } catch { /* cancelled */ }
 }
@@ -147,6 +153,7 @@ async function deleteDetailItem() {
   try {
     await ElMessageBox.confirm("确定删除这条历史记录吗？此操作不可恢复。", "删除确认", {
       type: "warning",
+      customClass: "history-delete-confirm",
       confirmButtonText: "删除",
       cancelButtonText: "取消",
       confirmButtonClass: "el-button--danger",
@@ -615,5 +622,55 @@ const detailDimensions = (item: any) => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+:global(.history-delete-confirm) {
+  width: min(520px, calc(100vw - 48px));
+  padding: 24px 26px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: #151820;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.72);
+}
+:global(.history-delete-confirm.el-message-box) {
+  --el-messagebox-title-color: rgba(255, 255, 255, 0.94);
+  --el-messagebox-content-color: rgba(255, 255, 255, 0.84);
+}
+:global(.history-delete-confirm .el-message-box__header) {
+  padding: 0 36px 14px 0;
+}
+:global(.history-delete-confirm .el-message-box__title) {
+  font-size: 20px;
+  font-weight: 700;
+}
+:global(.history-delete-confirm .el-message-box__content) {
+  padding: 14px 0 22px;
+}
+:global(.history-delete-confirm .el-message-box__message) {
+  font-size: 15px;
+  line-height: 1.6;
+}
+:global(.history-delete-confirm .el-message-box__btns) {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 6px 0 0;
+}
+:global(.history-delete-confirm .el-message-box__btns .el-button) {
+  min-width: 88px;
+  height: 44px;
+  margin-left: 0;
+  border-radius: 12px;
+  font-weight: 700;
+}
+:global(.history-delete-confirm .el-message-box__btns .el-button--danger) {
+  border-color: rgba(248, 113, 113, 0.85);
+  background: #fb7185;
+  color: #fff;
+}
+:global(.el-overlay-message-box) {
+  z-index: 3000 !important;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
 }
 </style>
