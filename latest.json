@@ -1,11 +1,11 @@
 {
-    "version":  "1.2.8",
-    "notes":  "Make Nano Banana Pro prompts standalone text-to-image reconstructions that preserve spatial layout and object relationships.",
-    "pub_date":  "2026-07-22T04:59:28Z",
+    "version":  "1.2.9",
+    "notes":  "Smooth single-image analysis progress so the percentage keeps moving while the model request is pending.",
+    "pub_date":  "2026-07-22T05:39:50Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djlsY1JSWVZxRzZiVmFGejFrM0hUd2hnazVCQTN2TnVsSVlVdXFlZzh1OFB0b1d5Y2RlUy9VOGJNR01ySUtSeUZRZHN0c29wOFhvSkdubTZ0RUttVUFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Njk2MzQ4CWZpbGU6RUtPXzEuMi44X3g2NC1zZXR1cC5leGUKQlNMeWpFeVRBQlo0YllHL3Vnb1pDRk1ud2lJRXUrbWJ2L3lwQzI2NmFmZGZFaEJrT2tuS3A5eWxlOVJ0bmc3T2QxeTlsbkF6NlhWTnJWbnUxZWN6RHc9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.8/EKO_1.2.8_x64-setup.exe"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djFnUzZwVDJ6akhERDh0d1RqNm1LdnFYS25TRncrSEtrTWFmRExRWm1QSEpkSHBUbkhLZStKN0lJZ2dRZjMzMGliQ1NFRUYrckNJNzNVQkx5OEw3MHdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0Njk4NzYxCWZpbGU6RUtPXzEuMi45X3g2NC1zZXR1cC5leGUKSnpWN054ZDczc0FEMTlpb2F4a1ROdkVES3hNL1dPc2hycnFDZUxuSWd2N25VaERTL21LRXU2RlpLdDdEV0JyaXBLV0FPTW9zNzF3TlQzM2FuTjloRHc9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.2.9/EKO_1.2.9_x64-setup.exe"
                                          }
                   }
 }
