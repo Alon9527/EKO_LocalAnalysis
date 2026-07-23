@@ -2,6 +2,7 @@ import {
   BRIDGE_BASE,
   buildAnalyzePayload,
   escapeHtml,
+  itemPreviewUrl,
   normalizeError,
   promptForItem,
   selectedItemKey,
@@ -20,6 +21,8 @@ const state = {
   error: "",
   selectionKey: "",
   selectionTimer: null,
+  warmupTimer: null,
+  initialized: false,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -27,7 +30,7 @@ const $ = (selector) => document.querySelector(selector);
 function render() {
   const item = state.selectedItem;
   const prompt = promptForItem(state.resultItem, state.target, state.lang);
-  const thumb = item?.thumbnailURL || item?.fileURL || "";
+  const thumb = itemPreviewUrl(item);
   $("#app").innerHTML = `
     <section class="panel">
       <header class="header">
@@ -110,12 +113,49 @@ function startSelectionWatcher() {
     if (!state.busy && window.eagle?.item?.getSelected) {
       refreshSelection({ silent: true });
     }
-  }, 700);
+  }, 500);
+
+  if (state.warmupTimer) clearInterval(state.warmupTimer);
+  let warmupTicks = 0;
+  state.warmupTimer = setInterval(() => {
+    warmupTicks += 1;
+    if (!state.busy && window.eagle?.item?.getSelected) {
+      refreshSelection({ silent: true });
+    }
+    if (warmupTicks >= 24 || state.selectedItem) {
+      clearInterval(state.warmupTimer);
+      state.warmupTimer = null;
+    }
+  }, 250);
 
   window.addEventListener("focus", () => refreshSelection({ silent: true }));
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) refreshSelection({ silent: true });
   });
+  if (window.eagle?.onPluginShow) {
+    eagle.onPluginShow(() => refreshSelection({ silent: true }));
+  }
+}
+
+async function initializePlugin() {
+  if (state.initialized) {
+    await refreshSelection({ silent: true });
+    return;
+  }
+  render();
+  if (!window.eagle) {
+    state.error = "请在 Eagle 插件环境中打开";
+    render();
+    return;
+  }
+  state.initialized = true;
+  try {
+    const theme = await eagle.app.theme;
+    document.body.setAttribute("theme", theme || "dark");
+    eagle.onThemeChanged?.((nextTheme) => document.body.setAttribute("theme", nextTheme || "dark"));
+  } catch {}
+  await refreshSelection();
+  startSelectionWatcher();
 }
 function requestJson(method, path, body) {
   return new Promise((resolve, reject) => {
@@ -198,18 +238,9 @@ async function copyPrompt() {
   render();
 }
 
-window.addEventListener("DOMContentLoaded", async () => {
-  render();
-  if (!window.eagle) {
-    state.error = "请在 Eagle 插件环境中打开";
-    render();
-    return;
+window.addEventListener("DOMContentLoaded", () => {
+  if (window.eagle?.onPluginCreate) {
+    eagle.onPluginCreate(initializePlugin);
   }
-  try {
-    const theme = await eagle.app.theme;
-    document.body.setAttribute("theme", theme || "dark");
-    eagle.onThemeChanged((nextTheme) => document.body.setAttribute("theme", nextTheme || "dark"));
-  } catch {}
-  await refreshSelection();
-  startSelectionWatcher();
+  initializePlugin();
 });

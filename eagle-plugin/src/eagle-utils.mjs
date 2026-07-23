@@ -15,6 +15,22 @@ export function selectedItemKey(item) {
   return item ? String(item.id || item.filePath || item.fileURL || item.thumbnailURL || "") : "";
 }
 
+export function filePathToUrl(filePath = "") {
+  if (!filePath) return "";
+  const normalized = String(filePath).replaceAll("\\", "/");
+  const prefixed = normalized.startsWith("/") ? normalized : `/${normalized}`;
+  return `file://${encodeURI(prefixed)}`;
+}
+
+export function itemPreviewUrl(item = {}) {
+  return String(
+    item.thumbnailURL ||
+    item.fileURL ||
+    item.url ||
+    (item.thumbnailPath ? filePathToUrl(item.thumbnailPath) : "") ||
+    (item.filePath ? filePathToUrl(item.filePath) : ""),
+  );
+}
 export function mimeFromPath(filePath = "") {
   const ext = String(filePath).split(".").pop()?.toLowerCase() || "png";
   return IMAGE_MIME_BY_EXT[ext] || "image/png";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAnalyzePayload, mimeFromPath, promptForItem, normalizeError, selectedItemKey } from "./eagle-utils.mjs";
+import { buildAnalyzePayload, mimeFromPath, promptForItem, normalizeError, selectedItemKey, itemPreviewUrl } from "./eagle-utils.mjs";
 
 describe("Eagle plugin utils", () => {
   it("builds a base64 analyze payload from a selected Eagle item", () => {
@@ -33,6 +33,11 @@ describe("Eagle plugin utils", () => {
     expect(selectedItemKey({ id: "item-1", filePath: "C:/images/a.jpg" })).toBe("item-1");
     expect(selectedItemKey({ filePath: "C:/images/a.jpg" })).toBe("C:/images/a.jpg");
     expect(selectedItemKey(null)).toBe("");
+  });
+  it("builds preview URLs from Eagle URL and path fields", () => {
+    expect(itemPreviewUrl({ thumbnailURL: "eagle://thumb" })).toBe("eagle://thumb");
+    expect(itemPreviewUrl({ filePath: "C:/images/kitchen photo.jpg" })).toBe("file:///C:/images/kitchen%20photo.jpg");
+    expect(itemPreviewUrl({})).toBe("");
   });
   it("normalizes file mime types and bridge connection errors", () => {
     expect(mimeFromPath("demo.webp")).toBe("image/webp");
