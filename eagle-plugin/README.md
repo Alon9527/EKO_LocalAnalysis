@@ -41,3 +41,9 @@
 - 选中 Eagle 图片后自动刷新当前预览。
 - 兼容 thumbnailPath/filePath 生成本地预览图。
 - 通过插件版本号升级避免 Eagle 继续使用旧缓存。
+
+
+### 0.1.2
+
+- 改为普通 plugin.js 脚本，避开 Eagle Inspector 对 ESM 模块加载的兼容问题。
+- 使用 Node fs 读取本地图片并转为 data URL 显示预览，避开 file:// 预览限制。
