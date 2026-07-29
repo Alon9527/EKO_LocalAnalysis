@@ -74,7 +74,7 @@ textarea,
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
 
-/* Element Plus theme overrides — teal accent on dark glass */
+/* Element Plus theme overrides - teal accent on dark glass */
 html.dark, html {
   --el-color-primary: #2dd4bf;
   --el-color-primary-light-3: #5eead4;
@@ -124,4 +124,181 @@ html.dark, html {
 .el-input__wrapper.is-focus,
 .el-select__wrapper.is-focused {
   box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.48) inset, 0 0 0 3px rgba(45, 212, 191, 0.09) !important;
+}
+
+/* macOS theme: bright translucent workspace with quiet controls */
+html[data-theme="macos"] {
+  color-scheme: light;
+  --color-background: #f5f6f8;
+  --color-foreground: #1d1d1f;
+  --color-muted: rgba(60, 60, 67, 0.72);
+  --color-muted-foreground: rgba(60, 60, 67, 0.48);
+  --color-card: rgba(255, 255, 255, 0.76);
+  --color-card-foreground: #1d1d1f;
+  --color-border: rgba(60, 60, 67, 0.14);
+  --color-input: rgba(255, 255, 255, 0.78);
+  --color-ring: rgba(0, 122, 255, 0.22);
+  --color-accent: #18a999;
+  --color-accent-foreground: #ffffff;
+  --color-surface: rgba(255, 255, 255, 0.72);
+  --color-elevated: rgba(255, 255, 255, 0.92);
+  --el-color-primary: #18a999;
+  --el-color-primary-light-3: #38cabb;
+  --el-color-primary-light-5: #85ddd4;
+  --el-color-primary-light-7: rgba(24, 169, 153, 0.24);
+  --el-color-primary-light-8: rgba(24, 169, 153, 0.16);
+  --el-color-primary-light-9: rgba(24, 169, 153, 0.08);
+  --el-color-primary-dark-2: #0d9488;
+  --el-bg-color: rgba(255, 255, 255, 0.72);
+  --el-bg-color-page: #f5f6f8;
+  --el-bg-color-overlay: rgba(255, 255, 255, 0.94);
+  --el-text-color-primary: #1d1d1f;
+  --el-text-color-regular: rgba(29, 29, 31, 0.82);
+  --el-text-color-secondary: rgba(60, 60, 67, 0.66);
+  --el-text-color-placeholder: rgba(60, 60, 67, 0.42);
+  --el-border-color: rgba(60, 60, 67, 0.16);
+  --el-border-color-light: rgba(60, 60, 67, 0.11);
+  --el-border-color-lighter: rgba(60, 60, 67, 0.08);
+  --el-fill-color: rgba(118, 118, 128, 0.08);
+  --el-fill-color-light: rgba(118, 118, 128, 0.07);
+  --el-fill-color-lighter: rgba(118, 118, 128, 0.05);
+  --el-fill-color-blank: rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="macos"] body {
+  background:
+    radial-gradient(circle at 16% 12%, rgba(85, 143, 255, 0.16), transparent 30rem),
+    radial-gradient(circle at 78% 8%, rgba(24, 169, 153, 0.14), transparent 28rem),
+    linear-gradient(180deg, #fbfbfd 0%, #f4f5f7 100%);
+  color: #1d1d1f;
+}
+
+html[data-theme="macos"] ::selection {
+  background: rgba(0, 122, 255, 0.22);
+  color: #1d1d1f;
+}
+
+html[data-theme="macos"] .app-shell {
+  background:
+    radial-gradient(circle at top left, rgba(24, 169, 153, 0.12), transparent 34rem),
+    linear-gradient(135deg, #fbfbfd 0%, #f4f5f8 52%, #eef1f5 100%) !important;
+  color: #1d1d1f !important;
+}
+
+html[data-theme="macos"] .app-atmosphere {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), transparent 36%),
+    linear-gradient(90deg, rgba(0, 122, 255, 0.08), transparent 35%, rgba(24, 169, 153, 0.08)) !important;
+}
+
+html[data-theme="macos"] .app-sidebar {
+  background: rgba(246, 247, 249, 0.74) !important;
+  border-right-color: rgba(60, 60, 67, 0.13) !important;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.72) inset;
+  backdrop-filter: blur(28px) saturate(1.45);
+}
+
+html[data-theme="macos"] .app-main {
+  background: rgba(255, 255, 255, 0.28) !important;
+}
+
+html[data-theme="macos"] .app-sidebar svg path {
+  fill: currentColor;
+}
+
+html[data-theme="macos"] .app-sidebar span,
+html[data-theme="macos"] .app-sidebar .el-menu-item,
+html[data-theme="macos"] .app-sidebar .el-menu-item .el-icon {
+  color: rgba(29, 29, 31, 0.68) !important;
+}
+
+html[data-theme="macos"] .app-sidebar .el-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.62) !important;
+  color: rgba(29, 29, 31, 0.88) !important;
+}
+
+html[data-theme="macos"] .app-sidebar .el-menu-item.is-active {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #0d9488 !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(60, 60, 67, 0.08) inset;
+}
+
+html[data-theme="macos"] .app-sidebar .el-menu-item.is-active .el-icon,
+html[data-theme="macos"] .app-sidebar .el-menu-item.is-active span {
+  color: #0d9488 !important;
+}
+
+html[data-theme="macos"] .update-notice {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(24, 169, 153, 0.28);
+  color: #1d1d1f;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="macos"] .el-card,
+html[data-theme="macos"] .el-dialog,
+html[data-theme="macos"] .el-message-box,
+html[data-theme="macos"] .el-popper,
+html[data-theme="macos"] .el-dropdown__popper,
+html[data-theme="macos"] .el-select__popper {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(60, 60, 67, 0.13) !important;
+  color: #1d1d1f !important;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.10) !important;
+  backdrop-filter: blur(26px) saturate(1.35);
+}
+
+html[data-theme="macos"] .el-card__header {
+  border-bottom-color: rgba(60, 60, 67, 0.10) !important;
+}
+
+html[data-theme="macos"] .el-input__wrapper,
+html[data-theme="macos"] .el-select__wrapper,
+html[data-theme="macos"] .el-textarea__inner,
+html[data-theme="macos"] .el-input-number,
+html[data-theme="macos"] textarea,
+html[data-theme="macos"] input {
+  background-color: rgba(255, 255, 255, 0.74) !important;
+  color: #1d1d1f !important;
+  box-shadow: 0 0 0 1px rgba(60, 60, 67, 0.13) inset !important;
+}
+
+html[data-theme="macos"] .el-input__wrapper:hover,
+html[data-theme="macos"] .el-select__wrapper:hover,
+html[data-theme="macos"] .el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px rgba(60, 60, 67, 0.22) inset !important;
+}
+
+html[data-theme="macos"] .el-input__wrapper.is-focus,
+html[data-theme="macos"] .el-select__wrapper.is-focused,
+html[data-theme="macos"] .el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px rgba(24, 169, 153, 0.52) inset, 0 0 0 4px rgba(24, 169, 153, 0.10) !important;
+}
+
+html[data-theme="macos"] .el-button:not(.el-button--primary):not(.el-button--danger):not(.el-button--warning):not(.el-button--success) {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(60, 60, 67, 0.15) !important;
+  color: rgba(29, 29, 31, 0.82) !important;
+}
+
+html[data-theme="macos"] .text-white,
+html[data-theme="macos"] .text-white\/90,
+html[data-theme="macos"] .text-white\/92,
+html[data-theme="macos"] .text-white\/75,
+html[data-theme="macos"] .text-white\/70 {
+  color: rgba(29, 29, 31, 0.88) !important;
+}
+
+html[data-theme="macos"] .text-white\/60,
+html[data-theme="macos"] .text-white\/58,
+html[data-theme="macos"] .text-white\/50,
+html[data-theme="macos"] .text-white\/45,
+html[data-theme="macos"] .text-white\/40 {
+  color: rgba(60, 60, 67, 0.58) !important;
+}
+
+html[data-theme="macos"] .bg-black {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  color: #111827 !important;
+  border-color: rgba(60, 60, 67, 0.13) !important;
 }

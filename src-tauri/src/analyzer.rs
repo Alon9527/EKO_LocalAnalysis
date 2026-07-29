@@ -266,6 +266,7 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
     let body = serde_json::json!({
         "model": model,
         "temperature": 0.2,
+        "stream": false,
         "response_format": { "type": "json_object" },
         "messages": [{
             "role": "user",
@@ -294,7 +295,10 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
         return Err(format!("API error {}: {}", status, text).into());
     }
 
-    let data: Value = serde_json::from_str(&text)?;
+    let data: Value = serde_json::from_str(&text).map_err(|err| {
+        let snippet: String = text.chars().take(300).collect();
+        format!("API returned non-JSON response: {}. Raw response starts with: {}", err, snippet)
+    })?;
     let content = data["choices"][0]["message"]["content"]
         .as_str()
         .unwrap_or("");

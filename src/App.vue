@@ -12,15 +12,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="relative flex flex-col h-screen w-screen overflow-hidden
+  <div class="app-shell relative flex flex-col h-screen w-screen overflow-hidden
               bg-[linear-gradient(145deg,#0b0d11_0%,#101117_45%,#07080b_100%)] text-white">
 
     <!-- Workspace texture -->
-    <div class="pointer-events-none absolute inset-0
+    <div class="app-atmosphere pointer-events-none absolute inset-0
                 bg-[linear-gradient(180deg,rgba(255,255,255,0.035)_0%,transparent_34%),linear-gradient(90deg,rgba(45,212,191,0.045)_0%,transparent_28%,rgba(255,255,255,0.018)_100%)]" />
 
     <!-- subtle noise overlay -->
-    <div class="pointer-events-none absolute inset-0 opacity-[0.035] mix-blend-overlay
+    <div class="app-atmosphere pointer-events-none absolute inset-0 opacity-[0.035] mix-blend-overlay
                 bg-[url('/noise.png')]" />
 
     <!-- App chrome -->
@@ -30,11 +30,11 @@ onMounted(() => {
 
       <!-- Sidebar -->
       <SideBar
-        class="relative z-10 bg-[#0d1014]/95 border-r border-white/[0.08]"
+        class="app-sidebar relative z-10 bg-[#0d1014]/95 border-r border-white/[0.08]"
       />
 
       <!-- Main -->
-      <main class="flex-1 min-w-0 relative overflow-hidden bg-[#090a0f]/45">
+      <main class="app-main flex-1 min-w-0 relative overflow-hidden bg-[#090a0f]/45">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <keep-alive>

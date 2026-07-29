@@ -1,16 +1,25 @@
 let hoverImage = null;
 let analyzeButton = null;
+let analyzeButtonGroup = null;
+let analyzeCloseButton = null;
 let panel = null;
 
 document.addEventListener("mouseover", (event) => {
+  if (event.target instanceof Element && event.target.closest(".eko-analyze-actions, .eko-result-panel")) return;
   const image = findImage(event.target);
-  if (!image || !image.currentSrc && !image.src) return;
+  if (!image || (!image.currentSrc && !image.src)) return;
   hoverImage = image;
   showAnalyzeButton(image);
 }, true);
 
 document.addEventListener("scroll", () => {
-  if (hoverImage && analyzeButton) positionButton(hoverImage);
+  if (hoverImage && analyzeButtonGroup) positionButton(hoverImage);
+}, true);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  closePanel();
+  hideAnalyzeButton();
 }, true);
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -32,26 +41,49 @@ function findImage(target) {
 }
 
 function showAnalyzeButton(image) {
-  if (!analyzeButton) {
+  if (!analyzeButtonGroup) {
+    analyzeButtonGroup = document.createElement("div");
+    analyzeButtonGroup.className = "eko-analyze-actions";
+
     analyzeButton = document.createElement("button");
     analyzeButton.className = "eko-analyze-button";
     analyzeButton.type = "button";
-    analyzeButton.textContent = "反推";
+    analyzeButton.textContent = "\u53cd\u63a8";
     analyzeButton.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (hoverImage) await analyzeImageElement(hoverImage);
     });
-    document.documentElement.appendChild(analyzeButton);
+
+    analyzeCloseButton = document.createElement("button");
+    analyzeCloseButton.className = "eko-analyze-close";
+    analyzeCloseButton.type = "button";
+    analyzeCloseButton.title = "\u5173\u95ed";
+    analyzeCloseButton.setAttribute("aria-label", "\u5173\u95ed EKO \u60ac\u6d6e\u6309\u94ae");
+    analyzeCloseButton.textContent = "x";
+    analyzeCloseButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideAnalyzeButton();
+    });
+
+    analyzeButtonGroup.append(analyzeButton, analyzeCloseButton);
+    document.documentElement.appendChild(analyzeButtonGroup);
   }
   positionButton(image);
-  analyzeButton.style.display = "inline-flex";
+  analyzeButtonGroup.style.display = "inline-flex";
 }
 
 function positionButton(image) {
   const rect = image.getBoundingClientRect();
-  analyzeButton.style.left = `${Math.max(12, rect.right - 68)}px`;
-  analyzeButton.style.top = `${Math.max(12, rect.top + 12)}px`;
+  if (!analyzeButtonGroup) return;
+  analyzeButtonGroup.style.left = `${Math.max(12, rect.right - 104)}px`;
+  analyzeButtonGroup.style.top = `${Math.max(12, rect.top + 12)}px`;
+}
+
+function hideAnalyzeButton() {
+  hoverImage = null;
+  if (analyzeButtonGroup) analyzeButtonGroup.style.display = "none";
 }
 
 async function analyzeImageElement(image) {
@@ -79,7 +111,7 @@ async function analyzePayload(payload) {
       return;
     }
     if (!response?.ok) {
-      renderPanel({ state: "error", error: response?.error || "分析失败" });
+      renderPanel({ state: "error", error: response?.error || "\u5206\u6790\u5931\u8d25" });
       return;
     }
     renderPanel({ state: "done", item: response.item });
@@ -111,43 +143,46 @@ function renderPanel(payload) {
   if (payload.state === "loading") {
     panel.innerHTML = `
       <div class="eko-panel-head">
-        <strong>EKO 正在分析</strong>
-        <button type="button" data-close>×</button>
+        <strong>EKO \u6b63\u5728\u5206\u6790</strong>
+        <button type="button" data-close aria-label="\u5173\u95ed">x</button>
       </div>
-      <div class="eko-panel-body">图片已发送到本地软件，分析完成后会自动写入历史记录。</div>
+      <div class="eko-panel-body">\u56fe\u7247\u5df2\u53d1\u9001\u5230\u672c\u5730\u8f6f\u4ef6\uff0c\u5206\u6790\u5b8c\u6210\u540e\u4f1a\u81ea\u52a8\u5199\u5165\u5386\u53f2\u8bb0\u5f55\u3002</div>
     `;
   } else if (payload.state === "error") {
     panel.innerHTML = `
       <div class="eko-panel-head">
-        <strong>分析失败</strong>
-        <button type="button" data-close>×</button>
+        <strong>\u5206\u6790\u5931\u8d25</strong>
+        <button type="button" data-close aria-label="\u5173\u95ed">x</button>
       </div>
-      <div class="eko-panel-error">${escapeHtml(payload.error || "未知错误")}</div>
-      <div class="eko-panel-hint">请确认 EKO 本地软件已打开，并且 API 设置可用。</div>
+      <div class="eko-panel-error">${escapeHtml(payload.error || "\u672a\u77e5\u9519\u8bef")}</div>
+      <div class="eko-panel-hint">\u8bf7\u786e\u8ba4 EKO \u672c\u5730\u8f6f\u4ef6\u5df2\u6253\u5f00\uff0c\u5e76\u4e14 API \u8bbe\u7f6e\u53ef\u7528\u3002</div>
     `;
   } else {
     const item = payload.item || {};
     panel.innerHTML = `
       <div class="eko-panel-head">
-        <strong>已保存到 EKO 历史</strong>
-        <button type="button" data-close>×</button>
+        <strong>\u5df2\u4fdd\u5b58\u5230 EKO \u5386\u53f2</strong>
+        <button type="button" data-close aria-label="\u5173\u95ed">x</button>
       </div>
-      <div class="eko-score">质量评分 <b>${escapeHtml(String(item.qualityScore ?? "-"))}</b></div>
-      <label>中文提示词</label>
+      <div class="eko-score">\u8d28\u91cf\u8bc4\u5206 <b>${escapeHtml(String(item.qualityScore ?? "-"))}</b></div>
+      <label>\u4e2d\u6587\u63d0\u793a\u8bcd</label>
       <textarea readonly>${escapeHtml(item.prompt_zh || "")}</textarea>
-      <button type="button" data-copy="zh">复制中文</button>
+      <button type="button" data-copy="zh">\u590d\u5236\u4e2d\u6587</button>
       <label>English Prompt</label>
       <textarea readonly>${escapeHtml(item.prompt_en || "")}</textarea>
       <button type="button" data-copy="en">Copy English</button>
     `;
   }
 
-  panel.querySelector("[data-close]")?.addEventListener("click", () => {
-    panel.remove();
-    panel = null;
-  });
+  panel.querySelector("[data-close]")?.addEventListener("click", closePanel);
   panel.querySelector('[data-copy="zh"]')?.addEventListener("click", () => copyPanelText("zh"));
   panel.querySelector('[data-copy="en"]')?.addEventListener("click", () => copyPanelText("en"));
+}
+
+function closePanel() {
+  if (!panel) return;
+  panel.remove();
+  panel = null;
 }
 
 function copyPanelText(lang) {

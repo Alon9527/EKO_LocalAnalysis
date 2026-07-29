@@ -222,6 +222,7 @@ async function clearAll() {
               <el-select v-model="form.themeMode" size="default" style="width: 100%">
                 <el-option label="深色" value="dark" />
                 <el-option label="浅色" value="light" />
+                <el-option label="macOS" value="macos" />
               </el-select>
             </el-form-item>
           </div>

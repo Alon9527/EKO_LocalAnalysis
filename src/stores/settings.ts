@@ -32,13 +32,10 @@ export const useSettingsStore = defineStore("settings", () => {
 
   function applyTheme(mode: string) {
     const root = document.documentElement;
-    if (mode === "light") {
-      root.classList.remove("dark");
-      root.classList.add("light");
-    } else {
-      root.classList.remove("light");
-      root.classList.add("dark");
-    }
+    const nextMode = mode === "light" || mode === "macos" ? mode : "dark";
+    root.dataset.theme = nextMode;
+    root.classList.toggle("light", nextMode === "light" || nextMode === "macos");
+    root.classList.toggle("dark", nextMode === "dark");
   }
 
   return { settings, loaded, load, save };
