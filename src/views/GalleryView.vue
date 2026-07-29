@@ -3,6 +3,7 @@ import { computed, ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useGalleryStore } from "@/stores/gallery";
 import { api } from "@/lib/api";
+import { getModelPrompt, type PromptTarget } from "@/lib/model-prompts";
 import RadarChart from "@/components/RadarChart.vue";
 import AnalysisBreakdown from "@/components/materials/AnalysisBreakdown.vue";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -19,6 +20,7 @@ const modelFilter = ref("");
 const dateFilter = ref("");
 const scoreFilter = ref<number | "">("");
 const copiedField = ref("");
+const promptTarget = ref<PromptTarget>("gpt");
 const promptTab = ref<"zh" | "en">("zh");
 const detailTab = ref<"prompt" | "breakdown">("prompt");
 const currentPage = ref(1);
@@ -58,9 +60,12 @@ function onDetailVisibilityChange(visible: boolean) {
 
 watch(() => store.detailItem?.id, () => {
   detailTab.value = "prompt";
+  promptTarget.value = "gpt";
   promptTab.value = "zh";
   copiedField.value = "";
 });
+
+const activePrompt = computed(() => getModelPrompt(store.detailItem, promptTarget.value, promptTab.value));
 
 let searchTimer: ReturnType<typeof setTimeout>;
 function onSearch(val: string) {
@@ -398,26 +403,30 @@ const detailDimensions = (item: any) => {
             <el-tabs v-model="detailTab" class="detail-mode-tabs">
               <el-tab-pane label="完整 Prompt" name="prompt">
                 <div class="prompt-tabs-wrap">
+                  <el-radio-group v-model="promptTarget" size="default" class="model-prompt-switch">
+                    <el-radio-button value="gpt">GPT Image</el-radio-button>
+                    <el-radio-button value="nano">Nano Banana</el-radio-button>
+                  </el-radio-group>
                   <el-tabs v-model="promptTab" class="prompt-tabs">
                     <el-tab-pane label="中文提示词" name="zh">
                       <div class="prompt-tab-toolbar">
                         <span class="text-[12px] text-white/38">可选取、复制完整内容</span>
-                        <el-button size="small" @click="copyText(store.detailItem.prompt_zh, 'zh')">
-                          <el-icon class="mr-1"><Check v-if="copiedField === 'zh'" /><CopyDocument v-else /></el-icon>
-                          {{ copiedField === 'zh' ? '已复制' : '复制' }}
+                        <el-button size="small" @click="copyText(activePrompt, `${promptTarget}-zh`)">
+                          <el-icon class="mr-1"><Check v-if="copiedField === `${promptTarget}-zh`" /><CopyDocument v-else /></el-icon>
+                          {{ copiedField === `${promptTarget}-zh` ? '已复制' : '复制' }}
                         </el-button>
                       </div>
-                      <textarea class="prompt-copy-field" :value="store.detailItem.prompt_zh" readonly spellcheck="false" />
+                      <textarea class="prompt-copy-field" :value="activePrompt" readonly spellcheck="false" />
                     </el-tab-pane>
                     <el-tab-pane label="English Prompt" name="en">
                       <div class="prompt-tab-toolbar">
                         <span class="text-[12px] text-white/38">Select and copy the full prompt</span>
-                        <el-button size="small" @click="copyText(store.detailItem.prompt_en, 'en')">
-                          <el-icon class="mr-1"><Check v-if="copiedField === 'en'" /><CopyDocument v-else /></el-icon>
-                          {{ copiedField === 'en' ? '已复制' : '复制' }}
+                        <el-button size="small" @click="copyText(activePrompt, `${promptTarget}-en`)">
+                          <el-icon class="mr-1"><Check v-if="copiedField === `${promptTarget}-en`" /><CopyDocument v-else /></el-icon>
+                          {{ copiedField === `${promptTarget}-en` ? '已复制' : '复制' }}
                         </el-button>
                       </div>
-                      <textarea class="prompt-copy-field" :value="store.detailItem.prompt_en" readonly spellcheck="false" />
+                      <textarea class="prompt-copy-field" :value="activePrompt" readonly spellcheck="false" />
                     </el-tab-pane>
                   </el-tabs>
                 </div>
@@ -514,6 +523,17 @@ const detailDimensions = (item: any) => {
 }
 :deep(.prompt-tabs .el-tabs__nav-wrap::after) {
   background-color: rgba(255, 255, 255, 0.08);
+}
+.model-prompt-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.model-prompt-switch :deep(.el-radio-button),
+.model-prompt-switch :deep(.el-radio-button__inner) {
+  width: 100%;
 }
 .prompt-tab-toolbar {
   display: flex;

@@ -49,9 +49,22 @@ fn export_json(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn
     Ok(())
 }
 
+fn gpt_prompt_en(item: &storage::HistoryItem) -> &str {
+    item.prompt_gpt_image_en
+        .as_deref()
+        .or(item.prompt_en.as_deref())
+        .unwrap_or("")
+}
+
+fn gpt_prompt_zh(item: &storage::HistoryItem) -> &str {
+    item.prompt_gpt_image_zh
+        .as_deref()
+        .or(item.prompt_zh.as_deref())
+        .unwrap_or("")
+}
 fn export_csv(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut wtr = csv::Writer::from_path(path)?;
-    wtr.write_record(["ID", "File Name", "Source", "Quality Score", "Quality Label", "Prompt EN", "Prompt ZH", "Aspect Ratio", "Model", "Provider", "Elapsed (ms)", "Created At"])?;
+    wtr.write_record(["ID", "File Name", "Source", "Quality Score", "Quality Label", "GPT Image Prompt EN", "GPT Image Prompt ZH", "Nano Banana Prompt EN", "Nano Banana Prompt ZH", "Aspect Ratio", "Model", "Provider", "Elapsed (ms)", "Created At"])?;
 
     for item in items {
         wtr.write_record([
@@ -60,8 +73,10 @@ fn export_csv(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn 
             &item.source_type,
             &item.quality_score.to_string(),
             &item.quality_label,
-            item.prompt_en.as_deref().unwrap_or(""),
-            item.prompt_zh.as_deref().unwrap_or(""),
+            gpt_prompt_en(item),
+            gpt_prompt_zh(item),
+            item.prompt_nano_banana_en.as_deref().unwrap_or(""),
+            item.prompt_nano_banana_zh.as_deref().unwrap_or(""),
             item.aspect_ratio.as_deref().unwrap_or(""),
             &item.model,
             &item.provider,
@@ -90,13 +105,23 @@ fn export_markdown(items: &[storage::HistoryItem], path: &str) -> Result<(), Box
         out.push_str(&format!("- **Model:** {} ({})\n", item.model, item.provider));
         out.push_str(&format!("- **Time:** {}ms\n\n", item.elapsed_ms));
 
-        if let Some(ref en) = item.prompt_en {
-            out.push_str("### Prompt (EN)\n\n");
+        if !gpt_prompt_en(item).is_empty() {
+            out.push_str("### GPT Image Prompt (EN)\n\n");
+            out.push_str(gpt_prompt_en(item));
+            out.push_str("\n\n");
+        }
+        if !gpt_prompt_zh(item).is_empty() {
+            out.push_str("### GPT Image Prompt (ZH)\n\n");
+            out.push_str(gpt_prompt_zh(item));
+            out.push_str("\n\n");
+        }
+        if let Some(ref en) = item.prompt_nano_banana_en {
+            out.push_str("### Nano Banana Prompt (EN)\n\n");
             out.push_str(en);
             out.push_str("\n\n");
         }
-        if let Some(ref zh) = item.prompt_zh {
-            out.push_str("### Prompt (ZH)\n\n");
+        if let Some(ref zh) = item.prompt_nano_banana_zh {
+            out.push_str("### Nano Banana Prompt (ZH)\n\n");
             out.push_str(zh);
             out.push_str("\n\n");
         }
@@ -119,11 +144,17 @@ fn export_txt(items: &[storage::HistoryItem], path: &str) -> Result<(), Box<dyn 
         out.push_str(&format!("[{}] {}\n", i + 1, name));
         out.push_str(&format!("Quality: {} ({})\n", item.quality_score, item.quality_label));
 
-        if let Some(ref en) = item.prompt_en {
-            out.push_str(&format!("Prompt EN: {}\n", en));
+        if !gpt_prompt_en(item).is_empty() {
+            out.push_str(&format!("GPT Image Prompt EN: {}\n", gpt_prompt_en(item)));
         }
-        if let Some(ref zh) = item.prompt_zh {
-            out.push_str(&format!("Prompt ZH: {}\n", zh));
+        if !gpt_prompt_zh(item).is_empty() {
+            out.push_str(&format!("GPT Image Prompt ZH: {}\n", gpt_prompt_zh(item)));
+        }
+        if let Some(ref en) = item.prompt_nano_banana_en {
+            out.push_str(&format!("Nano Banana Prompt EN: {}\n", en));
+        }
+        if let Some(ref zh) = item.prompt_nano_banana_zh {
+            out.push_str(&format!("Nano Banana Prompt ZH: {}\n", zh));
         }
         out.push_str("\n");
     }

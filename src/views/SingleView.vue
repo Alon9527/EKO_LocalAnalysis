@@ -2,6 +2,7 @@
 import { ref, computed, onBeforeUnmount, onMounted } from "vue";
 import { useAnalysisStore } from "@/stores/analysis";
 import { api } from "@/lib/api";
+import { getModelPrompt, setModelPrompt, type PromptTarget } from "@/lib/model-prompts";
 import { uid, pathBasename, urlBasename } from "@/lib/utils";
 import RadarChart from "@/components/RadarChart.vue";
 import {
@@ -15,6 +16,7 @@ const preparing = ref(false);
 const inputHub = ref<HTMLElement | null>(null);
 const retryAction = ref<(() => Promise<void>) | null>(null);
 const urlValue = ref("");
+const promptTarget = ref<PromptTarget>("gpt");
 const currentLang = ref<"zh" | "en">("zh");
 const copied = ref(false);
 const dragOver = ref(false);
@@ -49,17 +51,11 @@ onBeforeUnmount(() => {
 const promptText = computed({
   get() {
     if (!store.result) return "";
-    return currentLang.value === "zh"
-      ? store.result.prompt_zh || store.result.prompt_en
-      : store.result.prompt_en || store.result.prompt_zh;
+    return getModelPrompt(store.result, promptTarget.value, currentLang.value);
   },
   set(value: string) {
     if (!store.result) return;
-    if (currentLang.value === "zh") {
-      store.result.prompt_zh = value;
-    } else {
-      store.result.prompt_en = value;
-    }
+    setModelPrompt(store.result, promptTarget.value, currentLang.value, value);
   },
 });
 
@@ -105,6 +101,12 @@ function structuredFieldsFromPrompt(rp: any) {
     { key: "composition.focal_length", label: "镜头感", value: rp.composition?.focal_length, icon: Camera, color: "#22d3ee" },
     { key: "composition.framing", label: "构图", value: rp.composition?.framing, icon: Camera, color: "#22d3ee" },
     { key: "composition.depth_of_field", label: "景深", value: rp.composition?.depth_of_field, icon: Camera, color: "#22d3ee" },
+    { key: "reconstruction_blueprint.frame", label: "画幅锁定", value: rp.reconstruction_blueprint?.frame, icon: Aim, color: "#2dd4bf" },
+    { key: "reconstruction_blueprint.camera", label: "机位锁定", value: rp.reconstruction_blueprint?.camera, icon: Camera, color: "#22d3ee" },
+    { key: "reconstruction_blueprint.fixed_layout", label: "固定布局", value: formatStructuredValue(rp.reconstruction_blueprint?.fixed_layout), icon: Aim, color: "#2dd4bf" },
+    { key: "reconstruction_blueprint.spatial_relationships", label: "空间关系", value: formatStructuredValue(rp.reconstruction_blueprint?.spatial_relationships), icon: Aim, color: "#2dd4bf" },
+    { key: "reconstruction_blueprint.surface_and_light", label: "表面与光线", value: rp.reconstruction_blueprint?.surface_and_light, icon: Sunny, color: "#fbbf24" },
+    { key: "reconstruction_blueprint.scene_invariants", label: "构图不变量", value: formatStructuredValue(rp.reconstruction_blueprint?.scene_invariants), icon: Aim, color: "#2dd4bf" },
     { key: "entities", label: "主体与物体", value: formatStructuredValue(rp.entities), icon: User, color: "#60a5fa" },
     { key: "environment_details.foreground", label: "前景", value: rp.environment_details?.foreground, icon: PicIcon, color: "#34d399" },
     { key: "environment_details.midground", label: "中景", value: rp.environment_details?.midground, icon: PicIcon, color: "#34d399" },
@@ -275,7 +277,7 @@ function setStructuredValue(target: any, key: string, value: string) {
 
 function parseStructuredEdit(key: string, value: string) {
   const trimmed = value.trim();
-  if (key === "global_scene.color_palette" || key === "technical_specs.vfx") {
+  if (key === "global_scene.color_palette" || key === "technical_specs.vfx" || key === "reconstruction_blueprint.fixed_layout" || key === "reconstruction_blueprint.spatial_relationships" || key === "reconstruction_blueprint.scene_invariants") {
     return trimmed ? trimmed.split(/[、,\n]/).map((item) => item.trim()).filter(Boolean) : [];
   }
   if (key === "entities") {
@@ -463,7 +465,11 @@ function parseStructuredEdit(key: string, value: string) {
               <div class="flex items-center gap-2.5">
                 <div class="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center text-[13px] font-bold text-teal-300">2</div>
                 <span class="text-[16px] font-semibold text-white/90">完整提示词</span>
-                <el-radio-group v-model="currentLang" size="small" class="ml-3">
+                <el-radio-group v-model="promptTarget" size="small" class="ml-3">
+                  <el-radio-button value="gpt">GPT Image</el-radio-button>
+                  <el-radio-button value="nano">Nano Banana</el-radio-button>
+                </el-radio-group>
+                <el-radio-group v-model="currentLang" size="small">
                   <el-radio-button value="zh">中文</el-radio-button>
                   <el-radio-button value="en">English</el-radio-button>
                 </el-radio-group>

@@ -22,6 +22,10 @@ pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<Hist
 
     let structured_prompt = build_structured_prompt(&result);
     let quality = compute_quality_from_json(&result);
+    let gpt_prompt_en = model_prompt_text(&result, &["gpt_image_2"], "prompt_en");
+    let gpt_prompt_zh = model_prompt_text(&result, &["gpt_image_2"], "prompt_zh");
+    let nano_prompt_en = model_prompt_text(&result, &["nano_banana", "nano_banana_pro"], "prompt_en");
+    let nano_prompt_zh = model_prompt_text(&result, &["nano_banana", "nano_banana_pro"], "prompt_zh");
 
     let item = HistoryItem {
         id: task.id.clone(),
@@ -34,8 +38,12 @@ pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<Hist
         reconstructed_prompt: Some(structured_prompt),
         reconstructed_prompt_zh: None,
         quality_notes: None,
-        prompt_en: result.get("prompt_en").and_then(|v| v.as_str()).map(|s| s.to_string()),
-        prompt_zh: result.get("prompt_zh").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        prompt_en: gpt_prompt_en.clone(),
+        prompt_zh: gpt_prompt_zh.clone(),
+        prompt_gpt_image_en: gpt_prompt_en,
+        prompt_gpt_image_zh: gpt_prompt_zh,
+        prompt_nano_banana_en: nano_prompt_en,
+        prompt_nano_banana_zh: nano_prompt_zh,
         quality_score: quality.0,
         quality_label: quality.1.clone(),
         quality_breakdown: quality.2.clone(),
@@ -125,80 +133,7 @@ fn save_thumbnail(task_id: &str, base64_data: &str) {
 }
 
 fn build_inference_instruction() -> String {
-    r#"你是一个图片反推提示词大师，专门把用户上传或提供的参考图片，反推成适合 AIGC 生图使用的结构化双语 Prompt JSON。
-
-工作规则：
-1. 直接分析输入图片。
-2. 只输出 raw JSON，不要输出 Markdown、解释、寒暄、代码块或额外说明。
-3. 所有结构化分析字段使用流畅中文；prompt_en 使用英文；prompt_zh 是 prompt_en 的忠实中文翻译。
-4. 只描述画面中可见或高度可信的视觉信息。不要编造品牌、型号、材质、场景故事或看不见的内容。
-5. 使用正向视觉描述，避免负面提示词和排除式表达。
-6. aspect_ratio 只能从以下值中选择最接近的一项：1:1、3:4、4:3、9:16、16:9。
-7. contains_people 必须是 JSON boolean：true 或 false。
-8. 如果图片中有可见文字，embedded_text 必须使用英文固定格式：with the text "..." in a typography，引号内文字不超过 25 个字符。如果没有可见文字，填空字符串 ""。
-9. prompt_en 应该是可直接用于生图的高质量英文提示词，包含主体、环境、光线、构图、材质、镜头、氛围和技术质感，长度不超过 480 words。
-10. prompt_zh 必须忠实翻译 prompt_en，不要额外扩写或删减。
-11. 输出前自检 JSON 是否有效、字段是否完整、数组和 boolean 类型是否正确。
-
-输出 JSON 必须使用以下结构：
-{
-  "global_scene": {
-    "art_style": "",
-    "atmosphere": "",
-    "color_palette": [],
-    "lighting": ""
-  },
-  "composition": {
-    "camera_angle": "",
-    "focal_length": "",
-    "framing": "",
-    "depth_of_field": ""
-  },
-  "entities": [
-    {
-      "label": "",
-      "appearance": "",
-      "pose": {
-        "action_description": "",
-        "body_language": "",
-        "spatial_position": ""
-      },
-      "sub_elements": []
-    }
-  ],
-  "environment_details": {
-    "foreground": "",
-    "midground": "",
-    "background": ""
-  },
-  "technical_specs": {
-    "texture_fidelity": "",
-    "render_engine_style": "",
-    "vfx": []
-  },
-  "aspect_ratio": "1:1",
-  "contains_people": false,
-  "embedded_text": "",
-  "prompt_en": "",
-  "prompt_zh": ""
-}
-
-字段写法要求：
-- global_scene.art_style：画面媒介与风格，如商业摄影、电影感产品摄影、数字插画、3D 渲染、概念艺术等。
-- global_scene.atmosphere：整体情绪和氛围。
-- global_scene.color_palette：主要色彩和点缀色。
-- global_scene.lighting：光源方向、柔硬、强弱、色温、反射、阴影。
-- composition.camera_angle：视角，如平视、俯拍、低角度、近景、微距。
-- composition.focal_length：镜头感，如广角、标准镜头、人像长焦、微距、长焦压缩。
-- composition.framing：主体位置、裁切、对称、三分法、留白、视觉平衡。
-- composition.depth_of_field：景深、焦点、虚化、散景。
-- entities：列出画面中重要主体或物体，包含外观、材质、颜色、动作、位置和子元素。
-- environment_details：拆成前景、中景、背景。
-- technical_specs.texture_fidelity：材质细节，如织物纹理、金属反光、玻璃、皮肤、纸张、塑料等。
-- technical_specs.render_engine_style：摄影或渲染质感，如真实商业摄影、Octane 风格、Unreal 风格、水彩、矢量、胶片等。
-- technical_specs.vfx：视觉效果，如光晕、雾气、粒子、运动模糊、颗粒、镜头光斑、反射等。
-
-Return JSON only."#.to_string()
+    include_str!("inference_prompt.txt").to_string()
 }
 
 async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
@@ -321,6 +256,27 @@ fn parse_json_response(text: &str) -> Result<Value, Box<dyn std::error::Error + 
     Err("Failed to parse model response as JSON".into())
 }
 
+fn value_text(value: Option<&Value>) -> Option<String> {
+    value
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+fn model_prompt_text(result: &Value, model_keys: &[&str], field: &str) -> Option<String> {
+    for model_key in model_keys {
+        if let Some(value) = value_text(
+            result
+                .get("model_prompts")
+                .and_then(|v| v.get(*model_key))
+                .and_then(|v| v.get(field)),
+        ) {
+            return Some(value);
+        }
+    }
+    value_text(result.get(field))
+}
 fn build_structured_prompt(result: &Value) -> Value {
     if result.get("global_scene").is_some()
         || result.get("composition").is_some()
@@ -331,10 +287,12 @@ fn build_structured_prompt(result: &Value) -> Value {
         serde_json::json!({
             "global_scene": result.get("global_scene").cloned().unwrap_or_else(|| serde_json::json!({})),
             "composition": result.get("composition").cloned().unwrap_or_else(|| serde_json::json!({})),
+            "reconstruction_blueprint": result.get("reconstruction_blueprint").cloned().unwrap_or_else(|| serde_json::json!({})),
             "entities": result.get("entities").cloned().unwrap_or_else(|| serde_json::json!([])),
             "environment_details": result.get("environment_details").cloned().unwrap_or_else(|| serde_json::json!({})),
             "technical_specs": result.get("technical_specs").cloned().unwrap_or_else(|| serde_json::json!({})),
-            "embedded_text": result.get("embedded_text").cloned().unwrap_or_else(|| serde_json::json!(""))
+            "embedded_text": result.get("embedded_text").cloned().unwrap_or_else(|| serde_json::json!("")),
+            "model_prompts": result.get("model_prompts").cloned().unwrap_or_else(|| serde_json::json!({}))
         })
     } else {
         result.get("reconstructed_prompt").cloned().unwrap_or_else(|| serde_json::json!({}))
@@ -431,4 +389,56 @@ fn compute_quality_from_json(result: &Value) -> (u32, String, Value, Vec<String>
     });
 
     (total, label.to_string(), breakdown, warnings)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inference_instruction_requires_two_model_prompts() {
+        let instruction = build_inference_instruction();
+        assert!(instruction.contains("model_prompts"));
+        assert!(instruction.contains("gpt_image_2"));
+        assert!(instruction.contains("nano_banana"));
+        assert!(instruction.contains("EXACT SPATIAL LAYOUT"));
+        assert!(instruction.contains("reconstruction_blueprint"));
+    }
+
+    #[test]
+    fn model_prompt_parser_keeps_model_outputs_distinct() {
+        let result = serde_json::json!({
+            "prompt_en": "legacy gpt prompt",
+            "model_prompts": {
+                "gpt_image_2": { "prompt_en": "geometry-first gpt prompt" },
+                "nano_banana": { "prompt_en": "standalone nano reconstruction" }
+            }
+        });
+
+        assert_eq!(
+            model_prompt_text(&result, &["gpt_image_2"], "prompt_en").as_deref(),
+            Some("geometry-first gpt prompt")
+        );
+        assert_eq!(
+            model_prompt_text(&result, &["nano_banana", "nano_banana_pro"], "prompt_en").as_deref(),
+            Some("standalone nano reconstruction")
+        );
+    }
+
+    #[test]
+    fn structured_prompt_preserves_reconstruction_blueprint_and_model_prompts() {
+        let result = serde_json::json!({
+            "global_scene": { "art_style": "photorealistic" },
+            "reconstruction_blueprint": { "frame": "16:9 landscape" },
+            "model_prompts": {
+                "gpt_image_2": { "prompt_en": "gpt" },
+                "nano_banana": { "prompt_en": "nano" }
+            }
+        });
+
+        let structured = build_structured_prompt(&result);
+        assert_eq!(structured["reconstruction_blueprint"]["frame"], "16:9 landscape");
+        assert_eq!(structured["model_prompts"]["gpt_image_2"]["prompt_en"], "gpt");
+        assert_eq!(structured["model_prompts"]["nano_banana"]["prompt_en"], "nano");
+    }
 }

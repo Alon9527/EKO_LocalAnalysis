@@ -200,6 +200,10 @@ fn is_empty_history_item(item: &HistoryItem) -> bool {
     item.id.trim().is_empty()
         && item.prompt_en.as_deref().unwrap_or("").trim().is_empty()
         && item.prompt_zh.as_deref().unwrap_or("").trim().is_empty()
+        && item.prompt_gpt_image_en.as_deref().unwrap_or("").trim().is_empty()
+        && item.prompt_gpt_image_zh.as_deref().unwrap_or("").trim().is_empty()
+        && item.prompt_nano_banana_en.as_deref().unwrap_or("").trim().is_empty()
+        && item.prompt_nano_banana_zh.as_deref().unwrap_or("").trim().is_empty()
         && item.reconstructed_prompt.is_none()
 }
 
@@ -245,6 +249,10 @@ mod tests {
             quality_notes: None,
             prompt_en: Some(prompt.to_string()),
             prompt_zh: Some(prompt.to_string()),
+            prompt_gpt_image_en: Some(prompt.to_string()),
+            prompt_gpt_image_zh: Some(prompt.to_string()),
+            prompt_nano_banana_en: None,
+            prompt_nano_banana_zh: None,
             quality_score: 80,
             quality_label: String::from("较强"),
             quality_breakdown: serde_json::json!({}),

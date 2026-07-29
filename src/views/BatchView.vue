@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { api } from "@/lib/api";
+import { getModelPrompt, setModelPrompt, type PromptTarget } from "@/lib/model-prompts";
 import { useSettingsStore } from "@/stores/settings";
 import { uid, pathBasename } from "@/lib/utils";
 import {
@@ -28,22 +29,19 @@ const doneCount = ref(0);
 const failedCount = ref(0);
 const currentItem = ref<BatchItem | null>(null);
 const avgTime = ref(0);
+const promptTarget = ref<PromptTarget>("gpt");
 const currentLang = ref<"zh" | "en">("zh");
 
 const promptText = computed({
   get() {
     const r = currentItem.value?.result;
     if (!r) return "";
-    return currentLang.value === "zh" ? (r.prompt_zh || r.prompt_en) : (r.prompt_en || r.prompt_zh);
+    return getModelPrompt(r, promptTarget.value, currentLang.value);
   },
   set(value: string) {
     const r = currentItem.value?.result;
     if (!r) return;
-    if (currentLang.value === "zh") {
-      r.prompt_zh = value;
-    } else {
-      r.prompt_en = value;
-    }
+    setModelPrompt(r, promptTarget.value, currentLang.value, value);
   },
 });
 
@@ -112,6 +110,12 @@ function structuredFieldsFromPrompt(rp: any) {
     { key: "composition.focal_length", label: "镜头感", value: rp.composition?.focal_length, icon: Camera, color: "#22d3ee" },
     { key: "composition.framing", label: "构图", value: rp.composition?.framing, icon: Camera, color: "#22d3ee" },
     { key: "composition.depth_of_field", label: "景深", value: rp.composition?.depth_of_field, icon: Camera, color: "#22d3ee" },
+    { key: "reconstruction_blueprint.frame", label: "画幅锁定", value: rp.reconstruction_blueprint?.frame, icon: Aim, color: "#2dd4bf" },
+    { key: "reconstruction_blueprint.camera", label: "机位锁定", value: rp.reconstruction_blueprint?.camera, icon: Camera, color: "#22d3ee" },
+    { key: "reconstruction_blueprint.fixed_layout", label: "固定布局", value: formatStructuredValue(rp.reconstruction_blueprint?.fixed_layout), icon: Aim, color: "#2dd4bf" },
+    { key: "reconstruction_blueprint.spatial_relationships", label: "空间关系", value: formatStructuredValue(rp.reconstruction_blueprint?.spatial_relationships), icon: Aim, color: "#2dd4bf" },
+    { key: "reconstruction_blueprint.surface_and_light", label: "表面与光线", value: rp.reconstruction_blueprint?.surface_and_light, icon: Sunny, color: "#fbbf24" },
+    { key: "reconstruction_blueprint.scene_invariants", label: "构图不变量", value: formatStructuredValue(rp.reconstruction_blueprint?.scene_invariants), icon: Aim, color: "#2dd4bf" },
     { key: "entities", label: "主体与物体", value: formatStructuredValue(rp.entities), icon: User, color: "#60a5fa" },
     { key: "environment_details.foreground", label: "前景", value: rp.environment_details?.foreground, icon: PicIcon, color: "#34d399" },
     { key: "environment_details.midground", label: "中景", value: rp.environment_details?.midground, icon: PicIcon, color: "#34d399" },
@@ -254,7 +258,7 @@ function setStructuredValue(target: any, key: string, value: string) {
 
 function parseStructuredEdit(key: string, value: string) {
   const trimmed = value.trim();
-  if (key === "global_scene.color_palette" || key === "technical_specs.vfx") {
+  if (key === "global_scene.color_palette" || key === "technical_specs.vfx" || key === "reconstruction_blueprint.fixed_layout" || key === "reconstruction_blueprint.spatial_relationships" || key === "reconstruction_blueprint.scene_invariants") {
     return trimmed ? trimmed.split(/[、,\n]/).map((item) => item.trim()).filter(Boolean) : [];
   }
   if (key === "entities") {
@@ -405,11 +409,17 @@ function parseStructuredEdit(key: string, value: string) {
         <el-card class="flex-1" body-style="height:100%;padding:16px;overflow-y:auto">
           <div v-if="currentItem?.result" class="space-y-6">
             <!-- Top: lang toggle + copy -->
-            <div class="flex items-center justify-between">
-              <el-radio-group v-model="currentLang" size="default">
-                <el-radio-button value="zh">中文</el-radio-button>
-                <el-radio-button value="en">English</el-radio-button>
-              </el-radio-group>
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <el-radio-group v-model="promptTarget" size="default">
+                  <el-radio-button value="gpt">GPT Image</el-radio-button>
+                  <el-radio-button value="nano">Nano Banana</el-radio-button>
+                </el-radio-group>
+                <el-radio-group v-model="currentLang" size="default">
+                  <el-radio-button value="zh">中文</el-radio-button>
+                  <el-radio-button value="en">English</el-radio-button>
+                </el-radio-group>
+              </div>
               <el-button size="default" @click="copyPromptBatch">
                 <el-icon class="mr-1"><CopyDocument /></el-icon>复制
               </el-button>
@@ -418,7 +428,7 @@ function parseStructuredEdit(key: string, value: string) {
             <!-- Full prompt (top) -->
             <div>
               <p class="text-[14px] font-semibold text-white/80 mb-3">
-                {{ currentLang === 'zh' ? '完整提示词（中文）' : '完整提示词（English）' }}
+                {{ (promptTarget === 'gpt' ? 'GPT Image' : 'Nano Banana') + ' · ' + (currentLang === 'zh' ? '中文提示词' : 'English Prompt') }}
               </p>
               <textarea
                 v-model="promptText"
