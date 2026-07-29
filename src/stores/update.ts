@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { markRaw, ref, shallowRef } from "vue";
 
 const isTauri = typeof window !== "undefined" && !!(window as any).__TAURI_INTERNALS__;
+const UPDATE_TIMEOUT_MS = 90_000;
 
 export const useUpdateStore = defineStore("update", () => {
   const checking = ref(false);
@@ -9,7 +10,7 @@ export const useUpdateStore = defineStore("update", () => {
   const version = ref("");
   const notes = ref("");
   const error = ref("");
-  const updateRef = ref<any>(null);
+  const updateRef = shallowRef<any>(null);
 
   async function check(silent = true) {
     if (!isTauri) return null;
@@ -17,8 +18,14 @@ export const useUpdateStore = defineStore("update", () => {
     error.value = "";
     try {
       const { check } = await import("@tauri-apps/plugin-updater");
-      const update = await check();
-      updateRef.value = update;
+      const update = await check({
+        timeout: UPDATE_TIMEOUT_MS,
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "EKO-Updater",
+        },
+      });
+      updateRef.value = update ? markRaw(update) : null;
       updateAvailable.value = !!update;
       version.value = update?.version || "";
       notes.value = update?.body || "";
