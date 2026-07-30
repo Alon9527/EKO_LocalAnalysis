@@ -1,11 +1,11 @@
 {
-    "version":  "1.3.2",
-    "notes":  "EKO v1.3.2: adds macOS theme, improves APIMart/OpenAI-compatible error handling, and uses the verified MSI installer for Windows updates.",
-    "pub_date":  "2026-07-29T05:43:49Z",
+    "version":  "1.4.0",
+    "notes":  "EKO v1.4.0: adds separate GPT Image and Nano Banana reconstruction prompts with layout-locking analysis. This release rotates the updater signing key; install this MSI manually once, then future updates will work normally.",
+    "pub_date":  "2026-07-30T06:31:09Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSeDlMdTB2b2I3djIrQjliR2RWTEh0MkVlRGdPNTFIOXNYTGlIcUd3WWtIMFE0MXV6OEFnaUtvbENxdm9lZWtSRjlzUCt3ZVhReFpkQTFvK2UwcWxyd1RGbkV1amJramdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MzAzNzk3CWZpbGU6RUtPXzEuMy4yX3g2NF9lbi1VUy5tc2kKa3ViSTlTSkZOL0R4REFOdUF4dlJ4YmV0eGtXUEhlWnQxTzZ5NitPd2FDbWU5d0hvR0hLa2lFWmh3R3lKZFdOYUlpTTBsSytYdnkvYkEydTNja0lEQ1E9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.3.2/EKO_1.3.2_x64_en-US.msi"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTZ0lEOGJmSkVETlEydG0weS9jZDl4SE5oVlZ3QlNiMjNOZStac0xqZ2dQNFcyVWQrWDZvektPWmlBM1N3RUpoVmc4K2xpYmxPaTMyVkd4WjAxelluYWJUd2NzUEpjTmc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MzkyODgxCWZpbGU6RUtPXzEuNC4wX3g2NF9lbi1VUy5tc2kKbVBoZXF5VWdNMkNIT0NJY3ZkTzBMMWo2bVdGbEszZEZxMzkwRWlzaWVWQ3dDNlJSVWRTWnZXN2lLdWlZZ2FjQ0VPMWpmQ0t1eStrVm1VbU5LUzh4RGc9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.4.0/EKO_1.4.0_x64_en-US.msi"
                                          }
                   }
 }

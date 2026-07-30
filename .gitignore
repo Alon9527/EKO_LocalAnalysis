@@ -11,6 +11,7 @@ eko.key
 eko.key.pub
 eko-v2.key
 eko-v2.key.pub
+local-keys/
 
 .DS_Store
 Thumbs.db
