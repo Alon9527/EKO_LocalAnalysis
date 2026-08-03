@@ -66,18 +66,18 @@ function toggleFavorite() {
   display: flex;
   min-height: 184px;
   flex-direction: column;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--eko-border);
   border-radius: 8px;
-  background: rgba(18, 21, 28, 0.86);
+  background: var(--eko-panel);
   padding: 15px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--eko-text);
   transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
 }
 
 .material-card:hover,
 .material-card:focus-within {
   border-color: rgba(45, 212, 191, 0.42);
-  background: rgba(22, 27, 34, 0.96);
+  background: var(--eko-panel-solid);
   transform: translateY(-1px);
 }
 
@@ -123,13 +123,13 @@ function toggleFavorite() {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--eko-text-muted);
   cursor: pointer;
 }
 
 .material-card__favorite:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.82);
+  background: var(--eko-hover);
+  color: var(--eko-text);
 }
 
 .material-card__favorite.is-favorite {
@@ -139,7 +139,7 @@ function toggleFavorite() {
 .material-card__title {
   overflow: hidden;
   margin: 13px 0 7px;
-  color: rgba(255, 255, 255, 0.94);
+  color: var(--eko-text);
   font-size: 16px;
   font-weight: 650;
   line-height: 1.35;
@@ -151,7 +151,7 @@ function toggleFavorite() {
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--eko-text-secondary);
   font-size: 13px;
   line-height: 1.65;
   -webkit-box-orient: vertical;
@@ -161,7 +161,7 @@ function toggleFavorite() {
 .material-card__footer {
   margin-top: auto;
   padding-top: 14px;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--eko-text-muted);
   font-size: 12px;
 }
 

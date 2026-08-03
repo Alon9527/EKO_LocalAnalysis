@@ -86,15 +86,15 @@ async function openHistory(historyId: string) {
 
 .source-item {
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--eko-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--eko-panel-muted);
 }
 
 .source-item__preview {
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--eko-divider);
   background: rgba(0, 0, 0, 0.24);
 }
 
@@ -112,7 +112,7 @@ async function openHistory(historyId: string) {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  color: rgba(255, 255, 255, 0.34);
+  color: var(--eko-text-muted);
   font-size: 12px;
 }
 
@@ -133,7 +133,7 @@ async function openHistory(historyId: string) {
   display: -webkit-box;
   overflow: hidden;
   margin: 7px 0 0;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--eko-text-secondary);
   font-size: 12px;
   line-height: 1.55;
   -webkit-box-orient: vertical;
@@ -141,7 +141,7 @@ async function openHistory(historyId: string) {
 }
 
 .source-item__body .source-item__english {
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--eko-text-muted);
 }
 
 .source-item__link {

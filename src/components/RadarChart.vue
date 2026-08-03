@@ -93,7 +93,7 @@ const iconPositions = computed(() =>
       :key="'grid-' + i"
       :d="path"
       fill="none"
-      :stroke="i === gridPaths.length - 1 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'"
+      :stroke="i === gridPaths.length - 1 ? 'var(--eko-chart-grid-strong)' : 'var(--eko-chart-grid)'"
       stroke-width="1"
     />
 
@@ -105,7 +105,7 @@ const iconPositions = computed(() =>
       :y1="axis.y1"
       :x2="axis.x2"
       :y2="axis.y2"
-      stroke="rgba(255,255,255,0.06)"
+      stroke="var(--eko-chart-grid)"
       stroke-width="1"
     />
 
@@ -120,7 +120,7 @@ const iconPositions = computed(() =>
       :cy="polarToXY(angleFor(i), radius * (d.value / 100)).y"
       r="3"
       fill="rgb(45, 212, 191)"
-      stroke="rgba(10, 10, 15, 0.6)"
+      stroke="var(--eko-chart-dot-stroke)"
       stroke-width="1.5"
     />
 
@@ -132,7 +132,11 @@ const iconPositions = computed(() =>
       :y="lp.y"
       text-anchor="middle"
       dominant-baseline="central"
-      class="text-[9px] fill-white/40 font-medium"
+      class="radar-label text-[9px] font-medium"
     >{{ lp.label }}</text>
   </svg>
 </template>
+
+<style scoped>
+.radar-label { fill: var(--eko-text-muted); }
+</style>

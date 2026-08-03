@@ -481,7 +481,7 @@ function parseStructuredEdit(key: string, value: string) {
     </div>
 
     <!-- Bottom: Progress only -->
-    <div class="shrink-0 px-6 py-3 border-t border-white/[0.06] bg-black/10">
+    <div class="workspace-footer shrink-0 px-6 py-3 border-t">
       <div class="flex items-center gap-5 mb-2">
         <span class="text-[14px] text-white/65">
           已完成 <strong class="text-white/90">{{ doneCount + failedCount }}/{{ queue.length }}</strong>
@@ -501,24 +501,24 @@ function parseStructuredEdit(key: string, value: string) {
 
 <style scoped>
 :deep(.el-card) {
-  background-color: rgba(14, 17, 23, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background-color: var(--eko-panel);
+  border: 1px solid var(--eko-border);
   border-radius: 12px;
-  box-shadow: none;
+  box-shadow: var(--eko-panel-shadow);
 }
 :deep(.el-empty__description) {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--eko-text-muted);
 }
 .prompt-editor {
   width: 100%;
   min-height: 190px;
   resize: vertical;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--eko-border);
+  background: var(--eko-input);
   padding: 14px 16px;
-  color: rgba(255, 255, 255, 0.84);
+  color: var(--eko-text);
   font-size: 14px;
   line-height: 1.85;
   outline: none;
@@ -534,9 +534,9 @@ function parseStructuredEdit(key: string, value: string) {
   resize: vertical;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--eko-input);
   padding: 10px 12px;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--eko-text);
   font-size: 14px;
   line-height: 1.75;
   outline: none;
@@ -545,5 +545,9 @@ function parseStructuredEdit(key: string, value: string) {
 .struct-editor:focus {
   border-color: rgba(45, 212, 191, 0.42);
   box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.09);
+}
+.workspace-footer {
+  background: var(--eko-panel-muted);
+  border-color: var(--eko-divider);
 }
 </style>

@@ -311,7 +311,7 @@ const detailDimensions = (item: any) => {
             ]"
             @click="isExportPage ? store.toggleSelect(item.id) : store.openDetail(item.id)"
           >
-            <div class="relative aspect-[4/3] bg-[#0a0a12] overflow-hidden rounded-t-xl">
+            <div class="relative aspect-[4/3] media-canvas overflow-hidden rounded-t-xl">
               <img v-if="item.thumbUrl" :src="item.thumbUrl" class="w-full h-full object-cover" alt="" loading="lazy" />
               <el-button
                 v-if="isExportPage"
@@ -469,17 +469,17 @@ const detailDimensions = (item: any) => {
 
 <style scoped>
 :deep(.el-card) {
-  background-color: rgba(14, 17, 23, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background-color: var(--eko-panel);
+  border: 1px solid var(--eko-border);
   border-radius: 12px;
-  box-shadow: none;
+  box-shadow: var(--eko-panel-shadow);
 }
 :deep(.el-card:hover) {
   border-color: rgba(45, 212, 191, 0.28);
 }
 :deep(.el-drawer) {
-  background-color: #10131a;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--eko-panel-solid);
+  border-left: 1px solid var(--eko-border);
 }
 :deep(.el-drawer__body) {
   padding: 0;
@@ -522,7 +522,7 @@ const detailDimensions = (item: any) => {
   margin-bottom: 8px;
 }
 :deep(.prompt-tabs .el-tabs__nav-wrap::after) {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--eko-divider);
 }
 .model-prompt-switch {
   display: grid;
@@ -547,10 +547,10 @@ const detailDimensions = (item: any) => {
   max-height: 460px;
   resize: vertical;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--eko-border);
+  background: var(--eko-input);
   padding: 14px;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--eko-text);
   font-size: 13px;
   line-height: 1.75;
   outline: none;

@@ -268,7 +268,7 @@ async function rebuildIndex() {
 <style scoped>
 .materials-view {
   min-height: 100%;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--eko-text);
 }
 
 .materials-toolbar {
@@ -278,8 +278,8 @@ async function rebuildIndex() {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto;
   gap: 14px 22px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 12, 17, 0.92);
+  border-bottom: 1px solid var(--eko-divider);
+  background: color-mix(in srgb, var(--eko-panel-solid) 94%, transparent);
   padding: 18px 24px 12px;
   backdrop-filter: blur(16px);
 }
@@ -293,7 +293,7 @@ async function rebuildIndex() {
 
 .materials-toolbar__title p {
   margin: 5px 0 0;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--eko-text-muted);
   font-size: 12px;
 }
 
@@ -309,9 +309,9 @@ async function rebuildIndex() {
 .select-field,
 .icon-tool {
   height: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--eko-border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--eko-input);
 }
 
 .search-field {
@@ -321,7 +321,7 @@ async function rebuildIndex() {
   gap: 8px;
   padding: 0 10px;
   min-width: 180px;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--eko-text-muted);
 }
 
 .search-field:focus-within {
@@ -333,7 +333,7 @@ async function rebuildIndex() {
   border: 0;
   outline: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--eko-text);
   font-size: 13px;
 }
 
@@ -344,7 +344,7 @@ async function rebuildIndex() {
   align-items: center;
   gap: 6px;
   padding: 0 10px;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--eko-text-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -358,8 +358,8 @@ async function rebuildIndex() {
 .select-field select {
   border: 0;
   outline: 0;
-  background: #171a21;
-  color: rgba(255, 255, 255, 0.76);
+  background: var(--eko-panel-solid);
+  color: var(--eko-text);
   font-size: 12px;
 }
 
@@ -373,7 +373,7 @@ async function rebuildIndex() {
   width: 36px;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--eko-text-secondary);
   cursor: pointer;
 }
 
@@ -383,11 +383,11 @@ async function rebuildIndex() {
   top: 42px;
   right: 0;
   width: 174px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--eko-border);
   border-radius: 7px;
-  background: #171a21;
+  background: var(--eko-panel-solid);
   padding: 5px;
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.44);
+  box-shadow: var(--eko-panel-shadow);
 }
 
 .library-menu__popup button {
@@ -399,13 +399,13 @@ async function rebuildIndex() {
   border-radius: 5px;
   background: transparent;
   padding: 9px;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--eko-text-secondary);
   font-size: 12px;
   cursor: pointer;
 }
 
 .library-menu__popup button:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--eko-hover);
 }
 
 .category-tabs {
@@ -422,15 +422,15 @@ async function rebuildIndex() {
   border-radius: 5px;
   background: transparent;
   padding: 0 11px;
-  color: rgba(255, 255, 255, 0.48);
+  color: var(--eko-text-muted);
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .category-tabs button:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.76);
+  background: var(--eko-hover);
+  color: var(--eko-text);
 }
 
 .category-tabs button.is-active {
@@ -451,9 +451,9 @@ async function rebuildIndex() {
 
 .materials-skeleton span {
   min-height: 184px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--eko-border);
   border-radius: 8px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.025), rgba(255,255,255,0.06), rgba(255,255,255,0.025));
+  background: linear-gradient(90deg, var(--eko-panel-muted), var(--eko-hover), var(--eko-panel-muted));
   background-size: 220% 100%;
   animation: material-shimmer 1.4s linear infinite;
 }
@@ -521,7 +521,7 @@ async function rebuildIndex() {
 
 .materials-empty p {
   margin: 7px 0 15px;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--eko-text-muted);
   font-size: 13px;
 }
 

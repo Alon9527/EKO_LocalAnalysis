@@ -155,27 +155,37 @@ async function handleFileClick() {
 async function analyzeFilePath(filePath: string) {
   retryAction.value = () => analyzeFilePath(filePath);
   preparing.value = true;
+  let dataUrl: string;
   try {
-    const dataUrl = await api.readFileAsDataUrl(filePath);
-    await store.analyze({ id: uid(), sourceType: "file", filePath, fileName: pathBasename(filePath) }, dataUrl);
+    dataUrl = await api.readFileAsDataUrl(filePath);
   } finally {
     preparing.value = false;
   }
+  await store.analyze({ id: uid(), sourceType: "file", filePath, fileName: pathBasename(filePath) }, dataUrl);
 }
 
 async function analyzeDataUrl(file: File, dataUrl: string) {
   retryAction.value = () => analyzeDataUrl(file, dataUrl);
+  const base64 = dataUrl.split(",")[1];
+  const mimeType = dataUrl.split(";")[0].split(":")[1] || file.type || "image/png";
+  await store.analyze(
+    { id: uid(), sourceType: "clipboard", base64Data: base64, mimeType, fileName: file.name || "dropped-image.png" },
+    dataUrl
+  );
+}
+
+function readAndAnalyzeBrowserFile(file: File) {
   preparing.value = true;
-  try {
-    const base64 = dataUrl.split(",")[1];
-    const mimeType = dataUrl.split(";")[0].split(":")[1] || file.type || "image/png";
-    await store.analyze(
-      { id: uid(), sourceType: "clipboard", base64Data: base64, mimeType, fileName: file.name || "dropped-image.png" },
-      dataUrl
-    );
-  } finally {
+  const reader = new FileReader();
+  reader.onload = () => {
     preparing.value = false;
-  }
+    void analyzeDataUrl(file, reader.result as string);
+  };
+  reader.onerror = () => {
+    preparing.value = false;
+    store.error = "图片读取失败，请确认文件未损坏后重试";
+  };
+  reader.readAsDataURL(file);
 }
 async function handleDrop(e: DragEvent) {
   e.preventDefault();
@@ -189,9 +199,7 @@ async function handleDrop(e: DragEvent) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => analyzeDataUrl(file, reader.result as string);
-    reader.readAsDataURL(file);
+    readAndAnalyzeBrowserFile(file);
   }
 }
 
@@ -209,9 +217,7 @@ function handlePaste(e: ClipboardEvent) {
     if (item.type.startsWith("image/")) {
       const blob = item.getAsFile();
       if (!blob) continue;
-      const reader = new FileReader();
-      reader.onload = () => analyzeDataUrl(blob, reader.result as string);
-      reader.readAsDataURL(blob);
+      readAndAnalyzeBrowserFile(blob);
       return;
     }
   }
@@ -402,7 +408,7 @@ function parseStructuredEdit(key: string, value: string) {
       <!-- Left: Image Preview -->
       <div class="w-[38%] shrink-0">
         <el-card class="!h-full" body-style="height:100%;padding:10px">
-          <div class="relative h-full rounded-xl overflow-hidden bg-[#0a0a12]">
+          <div class="media-canvas relative h-full rounded-xl overflow-hidden">
             <img
               v-if="store.previewSrc"
               :src="store.previewSrc"
@@ -533,7 +539,7 @@ function parseStructuredEdit(key: string, value: string) {
     </div>
 
     <!-- Bottom Action Bar -->
-    <div v-if="store.result" class="shrink-0 px-6 py-3 border-t border-white/[0.06] flex items-center justify-end gap-2.5 bg-black/10">
+    <div v-if="store.result" class="workspace-footer shrink-0 px-6 py-3 border-t flex items-center justify-end gap-2.5">
       <el-button size="default" @click="resetForNewInput">
         <el-icon class="mr-1"><RefreshLeft /></el-icon>重新分析
       </el-button>
@@ -552,22 +558,22 @@ function parseStructuredEdit(key: string, value: string) {
 
 <style scoped>
 :deep(.el-card) {
-  background-color: rgba(14, 17, 23, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background-color: var(--eko-panel);
+  border: 1px solid var(--eko-border);
   border-radius: 12px;
-  box-shadow: none;
+  box-shadow: var(--eko-panel-shadow);
 }
 :deep(.el-card__header) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--eko-divider);
   padding: 12px 16px;
 }
 :deep(.el-card__body) {
   padding: 16px;
 }
 :deep(.el-radio-button__inner) {
-  background-color: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.6);
+  background-color: var(--eko-input);
+  border-color: var(--eko-border);
+  color: var(--eko-text-secondary);
   font-weight: 500;
 }
 :deep(.el-radio-button.is-active .el-radio-button__inner) {
@@ -577,19 +583,19 @@ function parseStructuredEdit(key: string, value: string) {
   box-shadow: -1px 0 0 0 rgba(45, 212, 191, 0.4) !important;
 }
 :deep(.el-descriptions__label) {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  color: rgba(255, 255, 255, 0.6) !important;
+  background-color: var(--eko-panel-muted) !important;
+  color: var(--eko-text-secondary) !important;
 }
 :deep(.el-descriptions__content) {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: var(--eko-text) !important;
 }
 .input-hub {
   width: 100%;
   max-width: 1040px;
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--eko-border);
   border-radius: 22px;
-  background: rgba(16, 19, 26, 0.62);
+  background: var(--eko-panel);
   outline: none;
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
@@ -603,10 +609,10 @@ function parseStructuredEdit(key: string, value: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border: 1px dashed var(--eko-border);
   border-radius: 18px;
   cursor: pointer;
-  background: rgba(16, 19, 26, 0.6);
+  background: var(--eko-panel-muted);
   transition: border-color 180ms ease, background 180ms ease;
 }
 .input-hub__dropzone:hover,
@@ -641,9 +647,9 @@ function parseStructuredEdit(key: string, value: string) {
   align-items: center;
   gap: 14px;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--eko-border);
   border-radius: 12px;
-  background: rgba(16, 19, 26, 0.72);
+  background: var(--eko-panel);
 }
 .retry-preview__image {
   width: 72px;
@@ -665,10 +671,10 @@ function parseStructuredEdit(key: string, value: string) {
   min-height: 200px;
   resize: vertical;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--eko-border);
+  background: var(--eko-input);
   padding: 14px 16px;
-  color: rgba(255, 255, 255, 0.84);
+  color: var(--eko-text);
   font-size: 14px;
   line-height: 1.8;
   outline: none;
@@ -684,9 +690,9 @@ function parseStructuredEdit(key: string, value: string) {
   resize: vertical;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--eko-input);
   padding: 10px 12px;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--eko-text);
   font-size: 14px;
   line-height: 1.75;
   outline: none;
@@ -695,5 +701,9 @@ function parseStructuredEdit(key: string, value: string) {
 .struct-editor:focus {
   border-color: rgba(45, 212, 191, 0.42);
   box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.09);
+}
+.workspace-footer {
+  background: var(--eko-panel-muted);
+  border-color: var(--eko-divider);
 }
 </style>

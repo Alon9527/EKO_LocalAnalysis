@@ -32,23 +32,26 @@ export const useAnalysisStore = defineStore("analysis", () => {
     }
 
     analyzing.value = true;
-    progress.value = { percent: 5, text: "准备识别..." };
+    progress.value = { percent: 6, text: "正在准备分析..." };
 
-    // Simulated progress while waiting for API response
+    // The provider does not stream progress, so advance smoothly while the request is pending.
     let progressTimer: ReturnType<typeof setInterval> | null = null;
-    const stages = [
-      { p: 20, t: "上传图片..." },
-      { p: 40, t: "调用 AI 模型..." },
-      { p: 65, t: "分析图像内容..." },
-      { p: 85, t: "生成提示词..." },
-    ];
-    let stageIdx = 0;
+    let simulatedPercent = 6;
     progressTimer = setInterval(() => {
-      if (stageIdx < stages.length && analyzing.value) {
-        progress.value = { percent: stages[stageIdx].p, text: stages[stageIdx].t };
-        stageIdx++;
-      }
-    }, 2500);
+      if (!analyzing.value || simulatedPercent >= 92) return;
+
+      const increment = simulatedPercent < 28 ? 2 : simulatedPercent < 58 ? 1.5 : simulatedPercent < 82 ? 1 : 0.5;
+      simulatedPercent = Math.min(92, simulatedPercent + increment);
+      const roundedPercent = Math.round(simulatedPercent);
+      const text = roundedPercent < 28
+        ? "正在上传图片..."
+        : roundedPercent < 58
+          ? "AI 正在识别画面..."
+          : roundedPercent < 82
+            ? "正在组织结构化分析..."
+            : "正在生成双模型提示词...";
+      progress.value = { percent: roundedPercent, text };
+    }, 500);
 
     try {
       const res = await api.analyzeImage(task, settingsStore.settings);

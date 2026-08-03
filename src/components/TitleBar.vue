@@ -29,21 +29,21 @@ async function closeWindow() {
       <button
         type="button"
         @click="minimize"
-        class="w-11 h-9 flex items-center justify-center text-white/55 hover:text-white hover:bg-white/[0.08] transition-colors"
+        class="window-control w-11 h-9 flex items-center justify-center"
       >
         <svg width="11" height="11" viewBox="0 0 12 12" style="pointer-events:none"><path d="M2 6h8" stroke="currentColor" stroke-width="1.5"/></svg>
       </button>
       <button
         type="button"
         @click="toggleMaximize"
-        class="w-11 h-9 flex items-center justify-center text-white/55 hover:text-white hover:bg-white/[0.08] transition-colors"
+        class="window-control w-11 h-9 flex items-center justify-center"
       >
         <svg width="10" height="10" viewBox="0 0 12 12" style="pointer-events:none"><rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
       </button>
       <button
         type="button"
         @click="closeWindow"
-        class="w-11 h-9 flex items-center justify-center text-white/55 hover:text-white hover:bg-red-500/80 transition-colors"
+        class="window-control window-control--close w-11 h-9 flex items-center justify-center"
       >
         <svg width="11" height="11" viewBox="0 0 12 12" style="pointer-events:none"><path d="M3 3l6 6M9 3L3 9" stroke="currentColor" stroke-width="1.5"/></svg>
       </button>

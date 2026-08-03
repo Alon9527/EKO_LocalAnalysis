@@ -102,7 +102,7 @@ async fn get_image_data(task: &AnalysisTask, settings: &Settings) -> Result<(Str
             let client = reqwest::Client::builder()
                 .timeout(std::time::Duration::from_millis(settings.timeout_ms))
                 .build()?;
-            let resp = client.get(url).send().await?;
+            let resp = client.get(url).send().await.map_err(|error| transport_error(url, &error))?;
             let content_type = resp.headers()
                 .get("content-type")
                 .and_then(|v| v.to_str().ok())
@@ -168,7 +168,8 @@ async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -
         .header("Content-Type", "application/json")
         .json(&body)
         .send()
-        .await?;
+        .await
+        .map_err(|error| transport_error(&url, &error))?;
 
     let status = resp.status();
     let text = resp.text().await?;
@@ -213,6 +214,47 @@ fn unauthorized_message() -> &'static str {
     "API Key 无效或已失效：请到设置中心重新粘贴仅含密钥本身的内容；APIMart 密钥应以 sk- 开头，不要包含 Bearer、引号或首尾空格"
 }
 
+fn transport_error(url: &str, error: &reqwest::Error) -> std::io::Error {
+    let safe_url = url.split('?').next().unwrap_or(url);
+    let mut causes = Vec::new();
+    let mut source = std::error::Error::source(error);
+    while let Some(cause) = source {
+        let detail = cause.to_string();
+        if !detail.is_empty() && !causes.contains(&detail) {
+            causes.push(detail);
+        }
+        source = std::error::Error::source(cause);
+    }
+
+    let details = if causes.is_empty() {
+        error.to_string()
+    } else {
+        causes.join(" -> ")
+    };
+    let lower = details.to_ascii_lowercase();
+    let (kind, hint) = if error.is_timeout() || lower.contains("timed out") {
+        ("请求超时", "检查该电脑的网络延迟、防火墙或服务商节点是否可达")
+    } else if lower.contains("dns") || lower.contains("lookup") || lower.contains("name resolution") {
+        ("DNS 解析失败", "尝试更换 DNS，并确认浏览器可打开 api.apimart.ai")
+    } else if lower.contains("certificate") || lower.contains("tls") || lower.contains("ssl") {
+        ("HTTPS/TLS 握手失败", "检查系统时间、根证书以及代理软件的 HTTPS 解密设置")
+    } else if lower.contains("proxy") {
+        ("代理连接失败", "检查系统代理地址，或让 api.apimart.ai 走直连规则")
+    } else if error.is_connect() {
+        ("无法建立连接", "检查防火墙、系统代理、DNS，并确认服务商在该网络可访问")
+    } else {
+        ("网络传输失败", "检查该电脑的网络、系统时间、防火墙和代理设置")
+    };
+
+    std::io::Error::new(
+        std::io::ErrorKind::ConnectionRefused,
+        format!(
+            "连接 API 失败：{}\n类型：{}\n底层原因：{}\n建议：{}。请求尚未到达 API 鉴权阶段，因此这不是模型名或 API Key 校验错误。",
+            safe_url, kind, details, hint
+        ),
+    )
+}
+
 pub async fn test_api_connection(settings: Settings) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_millis(settings.timeout_ms))
@@ -238,12 +280,7 @@ pub async fn test_api_connection(settings: Settings) -> Result<String, Box<dyn s
         (url, request)
     };
 
-    let response = request.send().await.map_err(|error| {
-        std::io::Error::new(
-            std::io::ErrorKind::ConnectionRefused,
-            format!("连接 API 失败（{}）：{}", url, error),
-        )
-    })?;
+    let response = request.send().await.map_err(|error| transport_error(&url, &error))?;
     let status = response.status();
     let text = response.text().await?;
 
@@ -307,7 +344,8 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
         .header("Authorization", format!("Bearer {}", api_key))
         .json(&body)
         .send()
-        .await?;
+        .await
+        .map_err(|error| transport_error(&url, &error))?;
 
     let status = resp.status();
     let text = resp.text().await?;

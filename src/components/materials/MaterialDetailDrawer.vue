@@ -495,10 +495,10 @@ async function copyPrompt(language: "zh" | "en") {
   width: min(620px, 92vw);
   height: 100%;
   overflow-y: auto;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  background: #101319;
+  border-left: 1px solid var(--eko-border);
+  background: var(--eko-panel-solid);
   box-shadow: -20px 0 60px rgba(0, 0, 0, 0.46);
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--eko-text);
   animation: material-drawer-enter 180ms ease-out;
 }
 
@@ -522,8 +522,8 @@ async function copyPrompt(language: "zh" | "en") {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(16, 19, 25, 0.96);
+  border-bottom: 1px solid var(--eko-divider);
+  background: color-mix(in srgb, var(--eko-panel-solid) 96%, transparent);
   padding: 18px 20px;
   backdrop-filter: blur(14px);
 }
@@ -570,14 +570,14 @@ async function copyPrompt(language: "zh" | "en") {
 .icon-button {
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--eko-border);
+  background: var(--eko-input);
+  color: var(--eko-text-secondary);
 }
 
 .icon-button:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-  color: white;
+  border-color: rgba(45, 212, 191, 0.42);
+  color: var(--eko-text);
 }
 
 .icon-button.is-favorite {
@@ -590,13 +590,13 @@ async function copyPrompt(language: "zh" | "en") {
 }
 
 .material-detail__section + .material-detail__section {
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--eko-divider);
 }
 
 .field-label {
   display: block;
   margin-bottom: 7px;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--eko-text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
@@ -618,10 +618,10 @@ async function copyPrompt(language: "zh" | "en") {
   right: 8px;
   bottom: 8px;
   gap: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #171b22;
+  border: 1px solid var(--eko-border);
+  background: var(--eko-input);
   padding: 6px 9px;
-  color: rgba(255, 255, 255, 0.66);
+  color: var(--eko-text-secondary);
   font-size: 12px;
 }
 
@@ -646,9 +646,9 @@ async function copyPrompt(language: "zh" | "en") {
 }
 
 .secondary-button {
-  border-color: rgba(255, 255, 255, 0.11);
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(255, 255, 255, 0.72);
+  border-color: var(--eko-border);
+  background: var(--eko-input);
+  color: var(--eko-text-secondary);
 }
 
 .primary-button:disabled,
@@ -669,7 +669,7 @@ async function copyPrompt(language: "zh" | "en") {
 .operation-panel p,
 .muted-text {
   margin: 5px 0 0;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--eko-text-muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -680,9 +680,9 @@ async function copyPrompt(language: "zh" | "en") {
   justify-content: space-between;
   gap: 10px;
   margin-top: -6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--eko-divider);
   padding-top: 10px;
-  color: rgba(255, 255, 255, 0.42);
+  color: var(--eko-text-muted);
   font-size: 12px;
 }
 
@@ -712,11 +712,11 @@ async function copyPrompt(language: "zh" | "en") {
   width: min(480px, calc(100vw - 40px));
   max-height: min(620px, calc(100vh - 40px));
   overflow: auto;
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border: 1px solid var(--eko-border);
   border-radius: 8px;
-  background: #151920;
+  background: var(--eko-panel-solid);
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.55);
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--eko-text);
   transform: translate(-50%, -50%);
 }
 
@@ -731,7 +731,7 @@ async function copyPrompt(language: "zh" | "en") {
 
 .operation-panel__header,
 .operation-panel__body {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--eko-divider);
 }
 
 .operation-panel__header h3 {
@@ -757,10 +757,10 @@ async function copyPrompt(language: "zh" | "en") {
   grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--eko-border);
   border-radius: 6px;
   padding: 9px 10px;
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--eko-text-secondary);
   cursor: pointer;
 }
 
@@ -774,7 +774,7 @@ async function copyPrompt(language: "zh" | "en") {
 }
 
 .choice-row small {
-  color: rgba(255, 255, 255, 0.36);
+  color: var(--eko-text-muted);
 }
 
 .choice-row--source {

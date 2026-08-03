@@ -168,7 +168,7 @@ async function copySource(row: BreakdownRow) {
 <style scoped>
 .analysis-breakdown {
   min-height: 340px;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--eko-text);
 }
 
 .breakdown-state {
@@ -180,11 +180,11 @@ async function copySource(row: BreakdownRow) {
   gap: 8px;
   padding: 28px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.46);
+  color: var(--eko-text-muted);
 }
 
 .breakdown-state strong {
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--eko-text);
   font-size: 14px;
 }
 
@@ -212,19 +212,19 @@ async function copySource(row: BreakdownRow) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  border-bottom: 1px solid var(--eko-border);
 }
 
 .breakdown-section__header h4 {
   margin: 0;
   font-size: 13px;
   font-weight: 650;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--eko-text);
 }
 
 .breakdown-section__header span {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--eko-text-muted);
 }
 
 .breakdown-section__rows {
@@ -238,7 +238,7 @@ async function copySource(row: BreakdownRow) {
   gap: 14px;
   align-items: start;
   padding: 13px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--eko-divider);
 }
 
 .breakdown-row__main {
@@ -256,7 +256,7 @@ async function copySource(row: BreakdownRow) {
   overflow-wrap: anywhere;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--eko-text);
 }
 
 .language-state {
@@ -271,13 +271,13 @@ async function copySource(row: BreakdownRow) {
   overflow-wrap: anywhere;
   font-size: 12px;
   line-height: 1.65;
-  color: rgba(255, 255, 255, 0.64);
+  color: var(--eko-text-secondary);
   user-select: text;
 }
 
 .breakdown-row code {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--eko-text-muted);
   overflow-wrap: anywhere;
 }
 
@@ -293,10 +293,10 @@ async function copySource(row: BreakdownRow) {
   height: 32px;
   display: inline-grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--eko-border);
   border-radius: 6px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--eko-text-secondary);
   cursor: pointer;
 }
 
