@@ -1,11 +1,11 @@
 {
-    "version":  "1.4.0",
-    "notes":  "EKO v1.4.0: adds separate GPT Image and Nano Banana reconstruction prompts with layout-locking analysis. This release rotates the updater signing key; install this MSI manually once, then future updates will work normally.",
-    "pub_date":  "2026-07-30T06:31:09Z",
+    "version":  "1.4.1",
+    "notes":  "EKO v1.4.1: fixes APIMart and OpenAI-compatible API credential normalization, adds a no-billing connection test, and provides clearer 401/403 diagnostics.",
+    "pub_date":  "2026-08-03T03:14:03Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTZ0lEOGJmSkVETlEydG0weS9jZDl4SE5oVlZ3QlNiMjNOZStac0xqZ2dQNFcyVWQrWDZvektPWmlBM1N3RUpoVmc4K2xpYmxPaTMyVkd4WjAxelluYWJUd2NzUEpjTmc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1MzkyODgxCWZpbGU6RUtPXzEuNC4wX3g2NF9lbi1VUy5tc2kKbVBoZXF5VWdNMkNIT0NJY3ZkTzBMMWo2bVdGbEszZEZxMzkwRWlzaWVWQ3dDNlJSVWRTWnZXN2lLdWlZZ2FjQ0VPMWpmQ0t1eStrVm1VbU5LUzh4RGc9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.4.0/EKO_1.4.0_x64_en-US.msi"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTZ0lEOGJmSkVETmRFay8xdFBUQ1dyb2RRMEk2Qmk0TU13a3kyamVzdDhIaTBoelFkQ0RBbjg2OFhUR3dWbzR4bDR5WjRoeW9tUlovTGlIOFV5VkRGZVlPVWVPL3I3QXdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NzI2MTkzCWZpbGU6RUtPXzEuNC4xX3g2NF9lbi1VUy5tc2kKR3NtWVdDWnpBOVFGMFRwclJFS2xKZnR4OGhZbk9jQkllY0pxbWM0MnAxUmdKLzRyT0F6bTVlczB1VWVQSTlhVjM0b3VWQ1R2TkFFU1hSWVBHOEZYQ0E9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.4.1/EKO_1.4.1_x64_en-US.msi"
                                          }
                   }
 }
