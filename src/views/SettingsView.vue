@@ -3,6 +3,7 @@ import { ref, onMounted } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { useGalleryStore } from "@/stores/gallery";
 import { useUpdateStore } from "@/stores/update";
+import { api } from "@/lib/api";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Setting, Delete, Check, Refresh } from "@element-plus/icons-vue";
 
@@ -98,12 +99,46 @@ const form = ref({
 });
 
 const saving = ref(false);
+const testingConnection = ref(false);
+
+function normalizeApiKeyInput(value: string): string {
+  let normalized = value.trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim();
+  normalized = normalized.replace(/^Bearer\s+/i, "").trim();
+  return normalized.replace(/^["'“”‘’]+|["'“”‘’]+$/g, "").trim();
+}
+
+function normalizeBaseUrlInput(value: string): string {
+  return value
+    .trim()
+    .replace(/^["'“”‘’]+|["'“”‘’]+$/g, "")
+    .replace(/\/+$/, "")
+    .replace(/\/chat\/completions$/i, "")
+    .replace(/\/+$/, "");
+}
 
 onMounted(() => {
   const s = settingsStore.settings;
   form.value = { ...s };
 });
 
+async function testConnection() {
+  testingConnection.value = true;
+  try {
+    const normalizedSettings = {
+      ...form.value,
+      apiKey: normalizeApiKeyInput(form.value.apiKey),
+      baseUrl: normalizeBaseUrlInput(form.value.baseUrl),
+    };
+    const message = await api.testApiConnection(normalizedSettings);
+    await settingsStore.save(normalizedSettings);
+    form.value = { ...settingsStore.settings };
+    ElMessage.success(message);
+  } catch (err: any) {
+    ElMessage.error(err?.message || String(err) || "API 连接测试失败");
+  } finally {
+    testingConnection.value = false;
+  }
+}
 async function save() {
   if (form.value.timeoutMs < 5000) {
     ElMessage.error("超时不能小于 5000ms");
@@ -115,7 +150,13 @@ async function save() {
   }
   saving.value = true;
   try {
-    await settingsStore.save(form.value);
+    const normalizedSettings = {
+      ...form.value,
+      apiKey: normalizeApiKeyInput(form.value.apiKey),
+      baseUrl: normalizeBaseUrlInput(form.value.baseUrl),
+    };
+    await settingsStore.save(normalizedSettings);
+    form.value = { ...settingsStore.settings };
     ElMessage.success("设置已保存");
   } catch (err: any) {
     ElMessage.error(err?.message || "保存失败");
@@ -227,9 +268,12 @@ async function clearAll() {
             </el-form-item>
           </div>
 
-          <div class="pt-1">
-            <el-button type="primary" size="default" :loading="saving" @click="save">
+          <div class="pt-1 flex gap-2">
+            <el-button type="primary" size="default" :loading="saving" :disabled="testingConnection" @click="save">
               <el-icon class="mr-1.5"><Check /></el-icon>保存设置
+            </el-button>
+            <el-button size="default" :loading="testingConnection" :disabled="saving" @click="testConnection">
+              <el-icon class="mr-1.5"><Refresh /></el-icon>测试连接
             </el-button>
           </div>
         </el-form>

@@ -138,9 +138,13 @@ fn build_inference_instruction() -> String {
 
 async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let model = if settings.model.is_empty() { "gemini-2.5-flash" } else { &settings.model };
+    let api_key = storage::normalize_api_key(&settings.api_key);
+    if api_key.is_empty() {
+        return Err("API Key 为空，请先在设置中心填写并保存密钥".into());
+    }
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
-        model, settings.api_key
+        model, api_key
     );
 
     let body = serde_json::json!({
@@ -187,9 +191,91 @@ async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -
     parse_json_response(&content_text)
 }
 
+fn normalized_openai_credentials(settings: &Settings) -> Result<(String, String), String> {
+    let base_url = if settings.base_url.trim().is_empty() {
+        "https://api.openai.com/v1".to_string()
+    } else {
+        storage::normalize_base_url(&settings.base_url)
+    };
+    let api_key = storage::normalize_api_key(&settings.api_key);
+
+    if api_key.is_empty() {
+        return Err("API Key 为空，请先在设置中心填写并保存密钥".to_string());
+    }
+    if base_url.contains("api.apimart.ai") && !api_key.starts_with("sk-") {
+        return Err("APIMart API Key 格式无效：请填写 APIMart 控制台生成、以 sk- 开头的密钥，不要包含 Bearer、引号或空格".to_string());
+    }
+
+    Ok((base_url, api_key))
+}
+
+fn unauthorized_message() -> &'static str {
+    "API Key 无效或已失效：请到设置中心重新粘贴仅含密钥本身的内容；APIMart 密钥应以 sk- 开头，不要包含 Bearer、引号或首尾空格"
+}
+
+pub async fn test_api_connection(settings: Settings) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(settings.timeout_ms))
+        .build()?;
+
+    let (url, request) = if settings.provider_type == "gemini-native" {
+        let api_key = storage::normalize_api_key(&settings.api_key);
+        if api_key.is_empty() {
+            return Err("API Key 为空，请先填写密钥".into());
+        }
+        let url = format!("https://generativelanguage.googleapis.com/v1beta/models?key={}", api_key);
+        let request = client.get(&url);
+        (url, request)
+    } else {
+        let (base_url, api_key) = normalized_openai_credentials(&settings)
+            .map_err(|message| std::io::Error::new(std::io::ErrorKind::InvalidInput, message))?;
+        let url = if base_url.contains("api.apimart.ai") {
+            format!("{}/balance", base_url.trim_end_matches('/'))
+        } else {
+            format!("{}/models", base_url.trim_end_matches('/'))
+        };
+        let request = client.get(&url).header("Authorization", format!("Bearer {}", api_key));
+        (url, request)
+    };
+
+    let response = request.send().await.map_err(|error| {
+        std::io::Error::new(
+            std::io::ErrorKind::ConnectionRefused,
+            format!("连接 API 失败（{}）：{}", url, error),
+        )
+    })?;
+    let status = response.status();
+    let text = response.text().await?;
+
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        return Err(unauthorized_message().into());
+    }
+    if status == reqwest::StatusCode::FORBIDDEN {
+        return Err("API Key 已过期、被禁用或没有访问权限，请在服务商控制台检查密钥状态".into());
+    }
+    if !status.is_success() {
+        let snippet: String = text.chars().take(240).collect();
+        return Err(format!("连接测试失败（HTTP {}）：{}", status, snippet).into());
+    }
+
+    if settings.base_url.contains("api.apimart.ai") {
+        if let Ok(payload) = serde_json::from_str::<Value>(&text) {
+            if payload.get("success").and_then(Value::as_bool) == Some(false) {
+                let message = payload
+                    .get("message")
+                    .and_then(Value::as_str)
+                    .unwrap_or("APIMart 未确认该密钥有效");
+                return Err(message.to_string().into());
+            }
+        }
+    }
+
+    Ok("API 连接成功，密钥有效".to_string())
+}
 async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mime_type: &str, settings: &Settings) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let model = if settings.model.is_empty() { "gpt-4o" } else { &settings.model };
-    let base_url = if settings.base_url.is_empty() { "https://api.openai.com/v1" } else { &settings.base_url };
+    let (base_url, api_key) = normalized_openai_credentials(settings)
+        .map_err(|message| std::io::Error::new(std::io::ErrorKind::InvalidInput, message))?;
     let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
 
     let image_content = if let Some(img_url) = image_url {
@@ -218,7 +304,7 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
 
     let resp = client.post(&url)
         .header("Content-Type", "application/json")
-        .header("Authorization", format!("Bearer {}", settings.api_key))
+        .header("Authorization", format!("Bearer {}", api_key))
         .json(&body)
         .send()
         .await?;
@@ -226,6 +312,9 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
     let status = resp.status();
     let text = resp.text().await?;
 
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        return Err(unauthorized_message().into());
+    }
     if !status.is_success() {
         return Err(format!("API error {}: {}", status, text).into());
     }
@@ -440,5 +529,28 @@ mod tests {
         assert_eq!(structured["reconstruction_blueprint"]["frame"], "16:9 landscape");
         assert_eq!(structured["model_prompts"]["gpt_image_2"]["prompt_en"], "gpt");
         assert_eq!(structured["model_prompts"]["nano_banana"]["prompt_en"], "nano");
+    }
+
+    #[test]
+    fn openai_credentials_normalize_apimart_input() {
+        let mut settings = Settings::default();
+        settings.base_url = " \"https://api.apimart.ai/v1/chat/completions/\" ".to_string();
+        settings.api_key = " Bearer sk-test-key\r\n".to_string();
+
+        let (base_url, api_key) = normalized_openai_credentials(&settings).unwrap();
+
+        assert_eq!(base_url, "https://api.apimart.ai/v1");
+        assert_eq!(api_key, "sk-test-key");
+    }
+
+    #[test]
+    fn openai_credentials_reject_non_apimart_token() {
+        let mut settings = Settings::default();
+        settings.base_url = "https://api.apimart.ai/v1".to_string();
+        settings.api_key = "not-an-apimart-key".to_string();
+
+        let error = normalized_openai_credentials(&settings).unwrap_err();
+
+        assert!(error.contains("以 sk- 开头"));
     }
 }

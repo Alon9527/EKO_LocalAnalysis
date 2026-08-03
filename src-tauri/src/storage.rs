@@ -71,12 +71,40 @@ pub fn get_settings() -> Result<Settings, Box<dyn std::error::Error + Send + Syn
     }
 }
 
+pub fn normalize_api_key(value: &str) -> String {
+    let mut normalized = value
+        .trim()
+        .trim_matches(|character| matches!(character, '"' | '\'' | '“' | '”' | '‘' | '’'))
+        .trim();
+
+    if normalized.get(..7).is_some_and(|prefix| prefix.eq_ignore_ascii_case("bearer ")) {
+        normalized = normalized.get(7..).unwrap_or_default().trim();
+    }
+
+    normalized
+        .trim_matches(|character| matches!(character, '"' | '\'' | '“' | '”' | '‘' | '’'))
+        .trim()
+        .to_string()
+}
+pub fn normalize_base_url(value: &str) -> String {
+    let normalized = value
+        .trim()
+        .trim_matches(|character| matches!(character, '"' | '\'' | '“' | '”' | '‘' | '’'))
+        .trim()
+        .trim_end_matches('/');
+
+    normalized
+        .strip_suffix("/chat/completions")
+        .unwrap_or(normalized)
+        .trim_end_matches('/')
+        .to_string()
+}
 pub fn save_settings(data: serde_json::Value) -> Result<Settings, Box<dyn std::error::Error + Send + Sync>> {
     let mut current = get_settings()?;
     if let Some(obj) = data.as_object() {
         if let Some(v) = obj.get("providerType").and_then(|v| v.as_str()) { current.provider_type = v.to_string(); }
-        if let Some(v) = obj.get("apiKey").and_then(|v| v.as_str()) { current.api_key = v.to_string(); }
-        if let Some(v) = obj.get("baseUrl").and_then(|v| v.as_str()) { current.base_url = v.to_string(); }
+        if let Some(v) = obj.get("apiKey").and_then(|v| v.as_str()) { current.api_key = normalize_api_key(v); }
+        if let Some(v) = obj.get("baseUrl").and_then(|v| v.as_str()) { current.base_url = normalize_base_url(v); }
         if let Some(v) = obj.get("model").and_then(|v| v.as_str()) { current.model = v.to_string(); }
         if let Some(v) = obj.get("timeoutMs").and_then(|v| v.as_u64()) { current.timeout_ms = v; }
         if let Some(v) = obj.get("defaultLanguage").and_then(|v| v.as_str()) { current.default_language = v.to_string(); }
@@ -85,6 +113,33 @@ pub fn save_settings(data: serde_json::Value) -> Result<Settings, Box<dyn std::e
     }
     fs::write(settings_path(), serde_json::to_string_pretty(&current)?)?;
     Ok(current)
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::*;
+
+    #[test]
+    fn normalizes_pasted_api_key_without_changing_the_secret() {
+        assert_eq!(normalize_api_key("  Bearer sk-test-key\r\n"), "sk-test-key");
+        assert_eq!(normalize_api_key("\"sk-test-key\""), "sk-test-key");
+        assert_eq!(normalize_api_key("'AIza-test-key'"), "AIza-test-key");
+        assert_eq!(normalize_api_key("sk-test key"), "sk-test key");
+        assert_eq!(normalize_api_key("中文密钥abc"), "中文密钥abc");
+        assert_eq!(normalize_api_key("“Bearer sk-smart-quote”"), "sk-smart-quote");
+    }
+
+    #[test]
+    fn normalizes_openai_compatible_base_url() {
+        assert_eq!(
+            normalize_base_url(" https://api.apimart.ai/v1/chat/completions/ "),
+            "https://api.apimart.ai/v1"
+        );
+        assert_eq!(
+            normalize_base_url("\"https://api.apimart.ai/v1/\""),
+            "https://api.apimart.ai/v1"
+        );
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

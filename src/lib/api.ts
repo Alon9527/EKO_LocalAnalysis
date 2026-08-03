@@ -207,6 +207,10 @@ export const api = {
     return invokeTauri<Settings>("save_settings", { data });
   },
 
+  async testApiConnection(settings: Settings): Promise<string> {
+    if (!isTauri) browserUnsupported("测试 API 连接");
+    return invokeTauri<string>("test_api_connection", { settings });
+  },
   async analyzeImage(task: AnalysisTask, settings: Settings): Promise<HistoryItem> {
     if (!isTauri) browserUnsupported("图像分析");
     return invokeTauri<HistoryItem>("analyze_image", { task, settings });

@@ -36,6 +36,12 @@ async fn save_settings(data: serde_json::Value) -> Result<Settings, String> {
 }
 
 #[tauri::command]
+async fn test_api_connection(settings: Settings) -> Result<String, String> {
+    analyzer::test_api_connection(settings)
+        .await
+        .map_err(|error| error.to_string())
+}
+#[tauri::command]
 async fn analyze_image(task: AnalysisTask, settings: Settings) -> Result<HistoryItem, String> {
     analyzer::run_analysis(task, settings).await.map_err(|e| e.to_string())
 }
@@ -225,6 +231,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_settings,
             save_settings,
+            test_api_connection,
             analyze_image,
             get_history,
             delete_history,
