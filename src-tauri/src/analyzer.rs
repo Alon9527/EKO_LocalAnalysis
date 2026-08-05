@@ -18,6 +18,9 @@ pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<Hist
         call_openai_compatible(image_url.as_deref(), &image_base64, &mime_type, &settings).await?
     };
 
+    validate_model_prompt_contract(&result)
+        .map_err(|message| std::io::Error::new(std::io::ErrorKind::InvalidData, message))?;
+
     let elapsed = start.elapsed().as_millis() as u64;
 
     let structured_prompt = build_structured_prompt(&result);
@@ -156,7 +159,9 @@ async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -
             ]
         }],
         "generationConfig": {
-            "responseMimeType": "application/json"
+            "responseMimeType": "application/json",
+            "temperature": 0.1,
+            "maxOutputTokens": 8192
         }
     });
 
@@ -179,6 +184,7 @@ async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -
     }
 
     let data: Value = serde_json::from_str(&text)?;
+    ensure_completion_not_truncated(&data)?;
     let content_text = data["candidates"][0]["content"]["parts"]
         .as_array()
         .map(|parts| {
@@ -323,16 +329,26 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
 
     let body = serde_json::json!({
         "model": model,
-        "temperature": 0.2,
+        "temperature": 0.1,
+        "max_tokens": 8192,
         "stream": false,
         "response_format": { "type": "json_object" },
-        "messages": [{
-            "role": "user",
-            "content": [
-                { "type": "text", "text": build_inference_instruction() },
-                image_content
-            ]
-        }]
+        "messages": [
+            {
+                "role": "system",
+                "content": build_inference_instruction()
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Analyze this image now. Return the complete JSON contract, including both full model-specific reconstruction prompts."
+                    },
+                    image_content
+                ]
+            }
+        ]
     });
 
     let client = reqwest::Client::builder()
@@ -361,6 +377,7 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
         let snippet: String = text.chars().take(300).collect();
         format!("API returned non-JSON response: {}. Raw response starts with: {}", err, snippet)
     })?;
+    ensure_completion_not_truncated(&data)?;
     let content = data["choices"][0]["message"]["content"]
         .as_str()
         .unwrap_or("");
@@ -391,6 +408,25 @@ fn value_text(value: Option<&Value>) -> Option<String> {
         .map(str::to_string)
 }
 
+fn ensure_completion_not_truncated(data: &Value) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let openai_reason = data
+        .get("choices")
+        .and_then(|choices| choices.get(0))
+        .and_then(|choice| choice.get("finish_reason"))
+        .and_then(Value::as_str);
+    let gemini_reason = data
+        .get("candidates")
+        .and_then(|candidates| candidates.get(0))
+        .and_then(|candidate| candidate.get("finishReason"))
+        .and_then(Value::as_str);
+
+    if openai_reason == Some("length") || gemini_reason == Some("MAX_TOKENS") {
+        return Err("模型输出达到长度上限，完整双模型 Prompt 尚未生成。请提高模型输出上限或更换支持长 JSON 输出的视觉模型后重试。".into());
+    }
+
+    Ok(())
+}
+
 fn model_prompt_text(result: &Value, model_keys: &[&str], field: &str) -> Option<String> {
     for model_key in model_keys {
         if let Some(value) = value_text(
@@ -402,7 +438,75 @@ fn model_prompt_text(result: &Value, model_keys: &[&str], field: &str) -> Option
             return Some(value);
         }
     }
-    value_text(result.get(field))
+    None
+}
+
+fn validate_model_prompt_contract(result: &Value) -> Result<(), String> {
+    const GPT_SECTIONS: &[&str] = &[
+        "OUTPUT FRAME",
+        "CAMERA",
+        "FIXED LAYOUT",
+        "APPEARANCE",
+        "LIGHTING",
+        "INVARIANTS",
+    ];
+    const NANO_SECTIONS: &[&str] = &[
+        "FRAME AND CAMERA",
+        "EXACT SPATIAL LAYOUT",
+        "MATERIALS AND COLOR",
+        "LIGHT AND ATMOSPHERE",
+        "LOCKED CONDITIONS",
+    ];
+
+    let gpt_en = model_prompt_text(result, &["gpt_image_2"], "prompt_en");
+    let gpt_zh = model_prompt_text(result, &["gpt_image_2"], "prompt_zh");
+    let nano_en = model_prompt_text(result, &["nano_banana", "nano_banana_pro"], "prompt_en");
+    let nano_zh = model_prompt_text(result, &["nano_banana", "nano_banana_pro"], "prompt_zh");
+    let mut issues = Vec::new();
+
+    if gpt_en.is_none() {
+        issues.push("missing model_prompts.gpt_image_2.prompt_en".to_string());
+    }
+    if gpt_zh.is_none() {
+        issues.push("missing model_prompts.gpt_image_2.prompt_zh".to_string());
+    }
+    if nano_en.is_none() {
+        issues.push("missing model_prompts.nano_banana.prompt_en".to_string());
+    }
+    if nano_zh.is_none() {
+        issues.push("missing model_prompts.nano_banana.prompt_zh".to_string());
+    }
+
+    if let Some(prompt) = gpt_en.as_deref() {
+        let missing = GPT_SECTIONS
+            .iter()
+            .filter(|section| !prompt.contains(**section))
+            .copied()
+            .collect::<Vec<_>>();
+        if !missing.is_empty() {
+            issues.push(format!("gpt_image_2 missing sections: {}", missing.join(", ")));
+        }
+    }
+
+    if let Some(prompt) = nano_en.as_deref() {
+        let missing = NANO_SECTIONS
+            .iter()
+            .filter(|section| !prompt.contains(**section))
+            .copied()
+            .collect::<Vec<_>>();
+        if !missing.is_empty() {
+            issues.push(format!("nano_banana missing sections: {}", missing.join(", ")));
+        }
+    }
+
+    if issues.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "模型返回了旧版或不完整的提示词结构，结果未保存。请重新分析；若持续出现，请更换支持视觉识别和长 JSON 输出的模型。{}",
+            issues.join("; ")
+        ))
+    }
 }
 fn build_structured_prompt(result: &Value) -> Value {
     if result.get("global_scene").is_some()
@@ -550,6 +654,58 @@ mod tests {
             model_prompt_text(&result, &["nano_banana", "nano_banana_pro"], "prompt_en").as_deref(),
             Some("standalone nano reconstruction")
         );
+    }
+
+    #[test]
+    fn model_prompt_contract_rejects_legacy_summary_fallback() {
+        let result = serde_json::json!({
+            "prompt_en": "A bright kitchen with a person holding a trash bag.",
+            "prompt_zh": "一个明亮厨房里有人拿着垃圾袋。"
+        });
+
+        let error = validate_model_prompt_contract(&result).unwrap_err();
+
+        assert!(error.contains("model_prompts.gpt_image_2"));
+        assert!(error.contains("model_prompts.nano_banana"));
+    }
+
+    #[test]
+    fn model_prompt_contract_requires_model_specific_sections() {
+        let result = serde_json::json!({
+            "model_prompts": {
+                "gpt_image_2": {
+                    "prompt_en": "A generic reconstruction prompt.",
+                    "prompt_zh": "一段通用重建提示词。"
+                },
+                "nano_banana": {
+                    "prompt_en": "Another generic reconstruction prompt.",
+                    "prompt_zh": "另一段通用重建提示词。"
+                }
+            }
+        });
+
+        let error = validate_model_prompt_contract(&result).unwrap_err();
+
+        assert!(error.contains("OUTPUT FRAME"));
+        assert!(error.contains("EXACT SPATIAL LAYOUT"));
+    }
+
+    #[test]
+    fn model_prompt_contract_accepts_complete_model_sections() {
+        let result = serde_json::json!({
+            "model_prompts": {
+                "gpt_image_2": {
+                    "prompt_en": "OUTPUT FRAME: 16:9. CAMERA: eye level. FIXED LAYOUT: foreground and background. APPEARANCE: realistic. LIGHTING: daylight. INVARIANTS: one subject.",
+                    "prompt_zh": "输出画幅、相机、固定布局、外观、光线和不变量均已完整描述。"
+                },
+                "nano_banana": {
+                    "prompt_en": "FRAME AND CAMERA: 16:9 eye level. EXACT SPATIAL LAYOUT: foreground and background. MATERIALS AND COLOR: realistic. LIGHT AND ATMOSPHERE: daylight. LOCKED CONDITIONS: one subject.",
+                    "prompt_zh": "画幅与相机、精确空间布局、材质色彩、光线氛围和锁定条件均已完整描述。"
+                }
+            }
+        });
+
+        assert!(validate_model_prompt_contract(&result).is_ok());
     }
 
     #[test]

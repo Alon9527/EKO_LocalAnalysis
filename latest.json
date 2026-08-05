@@ -1,11 +1,11 @@
 {
-    "version":  "1.4.1",
-    "notes":  "EKO v1.4.1: fixes APIMart and OpenAI-compatible API credential normalization, adds a no-billing connection test, and provides clearer 401/403 diagnostics.",
-    "pub_date":  "2026-08-03T03:14:03Z",
+    "version":  "1.4.2",
+    "notes":  "EKO v1.4.2 restores strict dual-model reverse-prompt reconstruction for GPT Image and Nano Banana, rejects incomplete legacy summaries, and detects truncated API responses.",
+    "pub_date":  "2026-08-05T08:44:04Z",
     "platforms":  {
                       "windows-x86_64":  {
-                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTZ0lEOGJmSkVETmRFay8xdFBUQ1dyb2RRMEk2Qmk0TU13a3kyamVzdDhIaTBoelFkQ0RBbjg2OFhUR3dWbzR4bDR5WjRoeW9tUlovTGlIOFV5VkRGZVlPVWVPL3I3QXdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1NzI2MTkzCWZpbGU6RUtPXzEuNC4xX3g2NF9lbi1VUy5tc2kKR3NtWVdDWnpBOVFGMFRwclJFS2xKZnR4OGhZbk9jQkllY0pxbWM0MnAxUmdKLzRyT0F6bTVlczB1VWVQSTlhVjM0b3VWQ1R2TkFFU1hSWVBHOEZYQ0E9PQo=",
-                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.4.1/EKO_1.4.1_x64_en-US.msi"
+                                             "signature":  "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTZ0lEOGJmSkVETmRIVFZKZ3RhN2diWUt2bWwrbkpGQXZ2ZWZvaG5ReWJXdExwM0o0RVMxdzVaWUR3aG1CZENsR05uY3BWM2Q3Z0JZT2pzSXRzOTNFYWVEbWpuTjNNbmdzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg1OTE4OTIzCWZpbGU6RUtPXzEuNC4yX3g2NF9lbi1VUy5tc2kKQzc5emplZGJUZHRTV25iWHlGM01ReE01bGFkdXgvRWVTR1o2NXY0cEdrM3lOQlpiRlJBUFAva0ErSUpMbzY5eUM0TTREOTFEUFFiS29URkV1N0FHREE9PQo=",
+                                             "url":  "https://github.com/Alon9527/EKO_LocalAnalysis/releases/download/v1.4.2/EKO_1.4.2_x64_en-US.msi"
                                          }
                   }
 }

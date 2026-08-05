@@ -97,4 +97,10 @@ B. nano_banana
 - technical_specs：材质纹理、摄影或渲染质感、可见视觉效果。
 - prompt_en 与 prompt_zh 必须镜像 model_prompts.gpt_image_2，供旧版本兼容。
 
+Hard output contract:
+- model_prompts.gpt_image_2.prompt_en and prompt_zh are mandatory and must be non-empty.
+- model_prompts.nano_banana.prompt_en and prompt_zh are mandatory and must be non-empty.
+- The GPT English prompt must literally include these uppercase section labels: OUTPUT FRAME, CAMERA, FIXED LAYOUT, APPEARANCE, LIGHTING, INVARIANTS.
+- The Nano Banana English prompt must literally include these uppercase section labels: FRAME AND CAMERA, EXACT SPATIAL LAYOUT, MATERIALS AND COLOR, LIGHT AND ATMOSPHERE, LOCKED CONDITIONS.
+- Never replace either model-specific prompt with a short scene summary. Root prompt_en and prompt_zh only mirror the complete GPT prompt for backward compatibility.
 Return JSON only.
