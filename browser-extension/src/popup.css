@@ -1,0 +1,24 @@
+body {
+  margin: 0;
+  width: 320px;
+  background: #0f131b;
+  color: rgba(255,255,255,.84);
+  font: 14px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+main { padding: 16px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+strong { color: #fff; font-size: 15px; }
+#status { color: rgba(255,255,255,.48); font-size: 12px; white-space: nowrap; }
+#status.is-ok { color: #5eead4; }
+#status.is-error { color: #fca5a5; }
+button {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid rgba(45,212,191,.48);
+  border-radius: 9px;
+  background: rgba(45,212,191,.14);
+  color: #5eead4;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.hint { color: rgba(255,255,255,.48); font-size: 12px; }
