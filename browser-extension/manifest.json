@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EKO 图片反推助手",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "把网页图片发送到本地 EKO 图片反推工具分析，结果自动保存到桌面软件历史记录。",
   "permissions": [
     "activeTab",

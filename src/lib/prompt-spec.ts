@@ -323,8 +323,8 @@ function scoreImagenFit(result: PromptResult): number {
   if (result.prompt_en?.trim()) score += 20;
   if (result.prompt_zh?.trim()) score += 5;
   const wordCount = (result.prompt_en || "").split(/\s+/).filter(Boolean).length;
-  if (wordCount >= 30 && wordCount <= 220) score += 20;
-  else if (wordCount >= 12 && wordCount <= 320) score += 12;
+  if (wordCount >= 100 && wordCount <= 320) score += 20;
+  else if (wordCount >= 70 && wordCount <= 380) score += 12;
   else score += 4;
   const rp = result.reconstructed_prompt;
   const fields = [rp.style_prefix, rp.subject, rp.context_and_background, rp.lighting, rp.camera_and_composition];

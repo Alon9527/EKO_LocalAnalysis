@@ -442,23 +442,27 @@ fn model_prompt_text(result: &Value, model_keys: &[&str], field: &str) -> Option
 }
 
 fn validate_model_prompt_contract(result: &Value) -> Result<(), String> {
-    const GPT_SECTIONS: &[&str] = &[
+    const FORBIDDEN_HEADINGS: &[&str] = &[
         "OUTPUT FRAME",
-        "CAMERA",
         "FIXED LAYOUT",
-        "APPEARANCE",
-        "LIGHTING",
-        "INVARIANTS",
-    ];
-    const NANO_SECTIONS: &[&str] = &[
-        "FRAME AND CAMERA",
-        "EXACT SPATIAL LAYOUT",
-        "MATERIALS AND COLOR",
-        "LIGHT AND ATMOSPHERE",
         "LOCKED CONDITIONS",
+        "SCENE & PURPOSE",
+        "RENDERING INTENT",
+        "输出画幅：",
+        "固定布局：",
+        "锁定条件：",
+        "场景与用途：",
+        "渲染意图：",
     ];
-    const GPT_ZH_SECTIONS: &[&str] = &["输出画幅", "相机", "固定布局", "外观", "光线", "不变量"];
-    const NANO_ZH_SECTIONS: &[&str] = &["画幅与相机", "精确空间布局", "材质与色彩", "光线与氛围", "锁定条件"];
+    const REFERENCE_DEPENDENCIES: &[&str] = &[
+        "reference image",
+        "based on the reference",
+        "refer to the image",
+        "参考图",
+        "保持原图",
+        "与原图一致",
+        "如图",
+    ];
 
     let gpt_en = model_prompt_text(result, &["gpt_image_2"], "prompt_en");
     let gpt_zh = model_prompt_text(result, &["gpt_image_2"], "prompt_zh");
@@ -466,85 +470,130 @@ fn validate_model_prompt_contract(result: &Value) -> Result<(), String> {
     let nano_zh = model_prompt_text(result, &["nano_banana", "nano_banana_pro"], "prompt_zh");
     let mut issues = Vec::new();
 
-    if gpt_en.is_none() {
-        issues.push("missing model_prompts.gpt_image_2.prompt_en".to_string());
-    }
-    if gpt_zh.is_none() {
-        issues.push("missing model_prompts.gpt_image_2.prompt_zh".to_string());
-    }
-    if nano_en.is_none() {
-        issues.push("missing model_prompts.nano_banana.prompt_en".to_string());
-    }
-    if nano_zh.is_none() {
-        issues.push("missing model_prompts.nano_banana.prompt_zh".to_string());
-    }
-
-    if let Some(prompt) = gpt_en.as_deref() {
-        let missing = GPT_SECTIONS
-            .iter()
-            .filter(|section| !prompt.contains(**section))
-            .copied()
-            .collect::<Vec<_>>();
-        if !missing.is_empty() {
-            issues.push(format!("gpt_image_2 missing sections: {}", missing.join(", ")));
-        }
-    }
-
-    if let Some(prompt) = nano_en.as_deref() {
-        let missing = NANO_SECTIONS
-            .iter()
-            .filter(|section| !prompt.contains(**section))
-            .copied()
-            .collect::<Vec<_>>();
-        if !missing.is_empty() {
-            issues.push(format!("nano_banana missing sections: {}", missing.join(", ")));
+    for (field, prompt) in [
+        ("model_prompts.gpt_image_2.prompt_en", gpt_en.as_deref()),
+        ("model_prompts.gpt_image_2.prompt_zh", gpt_zh.as_deref()),
+        ("model_prompts.nano_banana.prompt_en", nano_en.as_deref()),
+        ("model_prompts.nano_banana.prompt_zh", nano_zh.as_deref()),
+    ] {
+        if prompt.is_none() {
+            issues.push(format!("missing {field}"));
         }
     }
 
     if let Some(prompt) = gpt_en.as_deref() {
-        if prompt.split_whitespace().count() < 70 {
-            issues.push("GPT English prompt is too short (minimum 70 words)".to_string());
+        let words = prompt.split_whitespace().count();
+        if words < 100 {
+            issues.push(format!("GPT English prompt is summary-level ({words}/100 words)"));
         }
     }
     if let Some(prompt) = nano_en.as_deref() {
-        if prompt.split_whitespace().count() < 70 {
-            issues.push("Nano Banana English prompt is too short (minimum 70 words)".to_string());
+        let words = prompt.split_whitespace().count();
+        if words < 120 {
+            issues.push(format!("Nano Banana English prompt is summary-level ({words}/120 words)"));
+        }
+        let start = prompt.trim_start().to_ascii_lowercase();
+        if !start.starts_with("create ") && !start.starts_with("generate ") && !start.starts_with("produce ") {
+            issues.push("Nano Banana prompt must begin with Create, Generate, or Produce".to_string());
         }
     }
     if let Some(prompt) = gpt_zh.as_deref() {
-        let missing = GPT_ZH_SECTIONS
-            .iter()
-            .filter(|section| !prompt.contains(**section))
-            .copied()
-            .collect::<Vec<_>>();
-        if !missing.is_empty() {
-            issues.push(format!("GPT 中文提示词缺少结构段落: {}", missing.join("、")));
-        }
-        if prompt.chars().filter(|character| !character.is_whitespace()).count() < 140 {
-            issues.push("GPT 中文提示词过短（至少 140 个非空白字符）".to_string());
+        let chars = prompt.chars().filter(|character| !character.is_whitespace()).count();
+        if chars < 180 {
+            issues.push(format!("GPT 中文提示词仍是摘要（{chars}/180 个非空白字符）"));
         }
     }
     if let Some(prompt) = nano_zh.as_deref() {
-        let missing = NANO_ZH_SECTIONS
-            .iter()
-            .filter(|section| !prompt.contains(**section))
-            .copied()
-            .collect::<Vec<_>>();
-        if !missing.is_empty() {
-            issues.push(format!("Nano Banana 中文提示词缺少结构段落: {}", missing.join("、")));
-        }
-        if prompt.chars().filter(|character| !character.is_whitespace()).count() < 140 {
-            issues.push("Nano Banana 中文提示词过短（至少 140 个非空白字符）".to_string());
+        let chars = prompt.chars().filter(|character| !character.is_whitespace()).count();
+        if chars < 220 {
+            issues.push(format!("Nano Banana 中文提示词仍是摘要（{chars}/220 个非空白字符）"));
         }
     }
+
+    for prompt in [gpt_en.as_deref(), gpt_zh.as_deref(), nano_en.as_deref(), nano_zh.as_deref()]
+        .into_iter()
+        .flatten()
+    {
+        let upper = prompt.to_uppercase();
+        let lower = prompt.to_lowercase();
+        let visible_headings = FORBIDDEN_HEADINGS
+            .iter()
+            .filter(|heading| upper.contains(&heading.to_uppercase()))
+            .copied()
+            .collect::<Vec<_>>();
+        if !visible_headings.is_empty() {
+            issues.push(format!("final prompt contains visible template headings: {}", visible_headings.join(", ")));
+        }
+        let dependencies = REFERENCE_DEPENDENCIES
+            .iter()
+            .filter(|phrase| lower.contains(&phrase.to_lowercase()))
+            .copied()
+            .collect::<Vec<_>>();
+        if !dependencies.is_empty() {
+            issues.push(format!("prompt depends on an unavailable reference: {}", dependencies.join(", ")));
+        }
+    }
+
+    if gpt_en.as_deref() == nano_en.as_deref() || gpt_zh.as_deref() == nano_zh.as_deref() {
+        issues.push("GPT and Nano Banana prompts must use distinct model-native wording".to_string());
+    }
+
+    validate_reconstruction_blueprint(result, &mut issues);
 
     if issues.is_empty() {
         Ok(())
     } else {
         Err(format!(
-            "模型返回了旧版或不完整的提示词结构，结果未保存。请重新分析；若持续出现，请更换支持视觉识别和长 JSON 输出的模型。{}",
+            "模型只返回了摘要级或旧版反推结果，结果未保存。请重新分析；若持续出现，请将识图模型从 mini/nano 级别换成更强的视觉模型。{}",
             issues.join("; ")
         ))
+    }
+}
+
+fn validate_reconstruction_blueprint(result: &Value, issues: &mut Vec<String>) {
+    let blueprint = result.get("reconstruction_blueprint");
+    for field in ["frame", "camera", "surface_and_light"] {
+        let value = blueprint
+            .and_then(|item| item.get(field))
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .unwrap_or("");
+        if value.chars().filter(|character| !character.is_whitespace()).count() < 8 {
+            issues.push(format!("reconstruction_blueprint.{field} is missing or too vague"));
+        }
+    }
+
+    for (field, minimum) in [("fixed_layout", 3usize), ("spatial_relationships", 2), ("scene_invariants", 2)] {
+        let count = blueprint
+            .and_then(|item| item.get(field))
+            .and_then(Value::as_array)
+            .map(Vec::len)
+            .unwrap_or(0);
+        if count < minimum {
+            issues.push(format!("reconstruction_blueprint.{field} needs at least {minimum} entries"));
+        }
+    }
+
+    let entity_text = result
+        .get("entities")
+        .map(collect_json_text)
+        .unwrap_or_default();
+    if result.get("entities").and_then(Value::as_array).map(Vec::len).unwrap_or(0) < 1
+        || entity_text.chars().filter(|character| !character.is_whitespace()).count() < 40
+    {
+        issues.push("entities does not contain a detailed visual inventory".to_string());
+    }
+
+    for field in ["foreground", "midground", "background"] {
+        let value = result
+            .get("environment_details")
+            .and_then(|item| item.get(field))
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .unwrap_or("");
+        if value.chars().filter(|character| !character.is_whitespace()).count() < 6 {
+            issues.push(format!("environment_details.{field} is missing or too vague"));
+        }
     }
 }
 fn build_structured_prompt(result: &Value) -> Value {
@@ -631,7 +680,7 @@ fn compute_quality_from_json(result: &Value) -> (u32, String, Value, Vec<String>
         if result["aspect_ratio"].as_str().is_some() { s += 20; }
         if result["contains_people"].as_bool().is_some() { s += 10; }
         if !prompt_en.is_empty() { s += 20; }
-        if word_count >= 30 && word_count <= 220 { s += 20; } else { s += 8; }
+        if word_count >= 100 && word_count <= 320 { s += 20; } else if word_count >= 70 && word_count <= 380 { s += 12; } else { s += 8; }
         if collect_json_text(&structured["global_scene"]).len() > 5 || structured["style_prefix"].as_str().unwrap_or("").len() > 5 { s += 15; }
         s += 10;
         std::cmp::min(100, s)
@@ -665,15 +714,65 @@ fn compute_quality_from_json(result: &Value) -> (u32, String, Value, Vec<String>
 mod tests {
     use super::*;
 
+    fn complete_model_prompt_result() -> Value {
+        let gpt_en = "A photorealistic commercial interior photograph of a calm modern kitchen intended for an architectural portfolio. The scene contains one central cooking island wrapped in veined white stone, one parallel sink island behind it, and a continuous wall of warm walnut cabinetry with two integrated steel ovens. Use wide landscape framing from an eye-level viewpoint, with the cooking island occupying the center-right foreground, the sink island offset behind it toward the left, and the window wall extending across the background. Show crisp stone veining, fine wood grain, brushed metal, clear glass, clean counter edges, and controlled natural reflections. Bright side daylight creates soft-edged shadows, cool white highlights, warm brown midtones, and a serene open atmosphere. Keep the exact two-island arrangement, open walkway, cabinet geometry, window boundaries, and uncluttered counters; do not add furniture, text, logos, or a watermark.";
+        let gpt_zh = "一幅用于建筑作品集的高真实感现代厨房商业室内摄影。场景中有一座包覆白色纹理石材的中央烹饪岛、一座位于其后并与其平行的水槽岛，以及沿墙连续排列的暖色胡桃木橱柜和两台嵌入式钢制烤箱。采用横向宽幅构图和平视视点，烹饪岛占据前景中央偏右，水槽岛向左错位位于其后，窗墙横跨背景。清晰呈现石材纹理、细密木纹、拉丝金属、透明玻璃、整洁台面边缘和受控自然反射。明亮侧向日光形成柔边阴影、冷白高光、暖棕中间调和宁静开放的氛围。保持两座岛台的准确排列、开放通道、橱柜几何、窗墙边界与简洁台面，不添加家具、文字、标志或水印。";
+        let nano_en = "Create a photorealistic 16:9 architectural portfolio image of a calm high-end modern kitchen with a broad eye-level field of view, straight vertical lines, and deep focus. Show exactly one rectangular cooking island in the center-right foreground, wrapped on the top and both visible ends in white stone with long gray veins; integrate one brushed-steel gas range into its rear half. Place exactly one parallel sink island behind it toward the left, leaving a clearly visible walkway between the two islands. Across the right background, build one continuous wall of warm walnut cabinetry with two vertically stacked steel ovens and a matching stone backsplash. Extend a floor-to-ceiling window wall across the left and rear background, keeping its dark frames evenly spaced. Render crisp stone veining, directional wood grain, brushed metal, clear glazing, and subtle surface reflections. Use bright natural side light with soft shadow edges, balanced warm brown and cool white tones, and a quiet airy mood. Keep the scene limited to these two islands and the fixed cabinetry, maintain the exact offsets and open floor area, keep the counters clean, and preserve continuous architectural boundaries.";
+        let nano_zh = "生成一幅用于建筑作品集的高真实感16:9高端现代厨房画面，采用宽广的平视取景、端正垂直线和深景深。前景中央偏右准确放置一座长方形烹饪岛，台面和两个可见端面包覆带长灰色纹理的白色石材，在岛台后半部嵌入一台拉丝钢燃气灶。其后偏左准确放置一座与之平行的水槽岛，两座岛台之间保留清晰可见的通道。右侧背景沿墙建立一组连续的暖色胡桃木橱柜，包含两台上下排列的钢制烤箱和同材质石材背板。落地窗墙横跨左侧与后方背景，深色窗框等距排列。清晰渲染石材纹理、定向木纹、拉丝金属、透明玻璃和细微表面反射。使用明亮自然侧光、柔和阴影边缘、平衡的暖棕与冷白色调以及安静通透的氛围。画面保持两座岛台和固定橱柜这一单一连贯布局，维持准确错位、开放地面、简洁台面和连续建筑边界。";
+
+        serde_json::json!({
+            "global_scene": {
+                "art_style": "高真实感商业室内摄影",
+                "atmosphere": "宁静、开放、精致",
+                "color_palette": ["暖棕色", "冷白色", "钢灰色"],
+                "lighting": "明亮自然侧光，柔边阴影和受控反射"
+            },
+            "composition": {
+                "camera_angle": "平视",
+                "focal_length": "宽广角镜头感",
+                "framing": "横向宽幅，两座岛台前后错位",
+                "depth_of_field": "深景深"
+            },
+            "reconstruction_blueprint": {
+                "frame": "横向16:9宽幅，完整保留左右窗墙与右侧橱柜边界",
+                "camera": "平视机位，宽广角取景，垂直线端正，深景深",
+                "fixed_layout": ["前景中央偏右为烹饪岛", "中景偏左为平行水槽岛", "背景右侧为连续胡桃木橱柜和双烤箱"],
+                "spatial_relationships": ["两座岛台相互平行并保留开放通道", "窗墙位于岛台后方并横跨左侧背景"],
+                "surface_and_light": "白色纹理石材、胡桃木、拉丝钢和玻璃受到明亮自然侧光照射",
+                "scene_invariants": ["主要岛台数量固定为两座", "台面和开放通道保持简洁"]
+            },
+            "entities": [{
+                "label": "两座厨房岛台",
+                "appearance": "一座带钢制燃气灶的白色纹理石材烹饪岛和一座平行水槽岛",
+                "pose": {
+                    "action_description": "静态建筑陈列",
+                    "body_language": "",
+                    "spatial_position": "前景中央偏右与中景偏左前后错位"
+                },
+                "sub_elements": ["燃气灶", "水槽", "石材端面", "开放通道"]
+            }],
+            "environment_details": {
+                "foreground": "前景为石材烹饪岛和清晰可见的地面",
+                "midground": "中景为平行水槽岛及两岛之间的开放通道",
+                "background": "背景为落地窗墙、连续胡桃木橱柜和双层钢制烤箱"
+            },
+            "model_prompts": {
+                "gpt_image_2": { "prompt_en": gpt_en, "prompt_zh": gpt_zh },
+                "nano_banana": { "prompt_en": nano_en, "prompt_zh": nano_zh }
+            }
+        })
+    }
+
     #[test]
-    fn inference_instruction_requires_two_model_prompts() {
+    fn inference_instruction_requires_detailed_natural_model_prompts() {
         let instruction = build_inference_instruction();
         assert!(instruction.contains("model_prompts"));
         assert!(instruction.contains("gpt_image_2"));
         assert!(instruction.contains("nano_banana"));
-        assert!(instruction.contains("EXACT SPATIAL LAYOUT"));
-        assert!(instruction.contains("输出画幅"));
-        assert!(instruction.contains("精确空间布局"));
+        assert!(instruction.contains("视觉库存"));
+        assert!(instruction.contains("100 至 320 words"));
+        assert!(instruction.contains("120 至 380 words"));
+        assert!(instruction.contains("不显示字段标题"));
         assert!(instruction.contains("reconstruction_blueprint"));
     }
 
@@ -682,18 +781,18 @@ mod tests {
         let result = serde_json::json!({
             "prompt_en": "legacy gpt prompt",
             "model_prompts": {
-                "gpt_image_2": { "prompt_en": "geometry-first gpt prompt" },
-                "nano_banana": { "prompt_en": "standalone nano reconstruction" }
+                "gpt_image_2": { "prompt_en": "natural gpt production brief" },
+                "nano_banana": { "prompt_en": "Create a standalone nano reconstruction" }
             }
         });
 
         assert_eq!(
             model_prompt_text(&result, &["gpt_image_2"], "prompt_en").as_deref(),
-            Some("geometry-first gpt prompt")
+            Some("natural gpt production brief")
         );
         assert_eq!(
             model_prompt_text(&result, &["nano_banana", "nano_banana_pro"], "prompt_en").as_deref(),
-            Some("standalone nano reconstruction")
+            Some("Create a standalone nano reconstruction")
         );
     }
 
@@ -705,69 +804,48 @@ mod tests {
         });
 
         let error = validate_model_prompt_contract(&result).unwrap_err();
-
         assert!(error.contains("model_prompts.gpt_image_2"));
         assert!(error.contains("model_prompts.nano_banana"));
     }
 
     #[test]
-    fn model_prompt_contract_requires_model_specific_sections() {
-        let result = serde_json::json!({
-            "model_prompts": {
-                "gpt_image_2": {
-                    "prompt_en": "A generic reconstruction prompt.",
-                    "prompt_zh": "一段通用重建提示词。"
-                },
-                "nano_banana": {
-                    "prompt_en": "Another generic reconstruction prompt.",
-                    "prompt_zh": "另一段通用重建提示词。"
-                }
-            }
-        });
+    fn model_prompt_contract_rejects_visible_template_headings() {
+        let mut result = complete_model_prompt_result();
+        result["model_prompts"]["gpt_image_2"]["prompt_en"] = serde_json::json!(format!(
+            "OUTPUT FRAME: 16:9. {}",
+            result["model_prompts"]["gpt_image_2"]["prompt_en"].as_str().unwrap()
+        ));
 
         let error = validate_model_prompt_contract(&result).unwrap_err();
-
+        assert!(error.contains("visible template headings"));
         assert!(error.contains("OUTPUT FRAME"));
-        assert!(error.contains("EXACT SPATIAL LAYOUT"));
     }
 
     #[test]
     fn model_prompt_contract_rejects_short_chinese_summaries() {
-        let result = serde_json::json!({
-            "model_prompts": {
-                "gpt_image_2": {
-                    "prompt_en": "OUTPUT FRAME: 16:9. CAMERA: eye level. FIXED LAYOUT: foreground and background. APPEARANCE: realistic. LIGHTING: daylight. INVARIANTS: one subject.",
-                    "prompt_zh": "一个明亮的厨房场景。"
-                },
-                "nano_banana": {
-                    "prompt_en": "FRAME AND CAMERA: 16:9 eye level. EXACT SPATIAL LAYOUT: foreground and background. MATERIALS AND COLOR: realistic. LIGHT AND ATMOSPHERE: daylight. LOCKED CONDITIONS: one subject.",
-                    "prompt_zh": "一个明亮的厨房场景。"
-                }
-            }
-        });
+        let mut result = complete_model_prompt_result();
+        result["model_prompts"]["gpt_image_2"]["prompt_zh"] = serde_json::json!("一个明亮的厨房场景。");
+        result["model_prompts"]["nano_banana"]["prompt_zh"] = serde_json::json!("一个明亮的厨房场景。");
 
         let error = validate_model_prompt_contract(&result).unwrap_err();
-
-        assert!(error.contains("GPT 中文提示词"));
-        assert!(error.contains("Nano Banana 中文提示词"));
+        assert!(error.contains("GPT 中文提示词仍是摘要"));
+        assert!(error.contains("Nano Banana 中文提示词仍是摘要"));
     }
 
     #[test]
-    fn model_prompt_contract_accepts_complete_model_sections() {
-        let gpt_en = format!("OUTPUT FRAME: 16:9 landscape frame. CAMERA: eye-level wide-angle view with controlled perspective and exact crop. FIXED LAYOUT: foreground, midground, and background objects keep their count, screen position, scale, overlap, and spacing. APPEARANCE: photorealistic surfaces with accurate colors, forms, and texture. LIGHTING: soft directional daylight with balanced highlights and shadows. INVARIANTS: preserve the described subject count, open areas, boundaries, proportions, and uncluttered surfaces. {}", "Detailed spatial reconstruction wording. ".repeat(8));
-        let gpt_zh = format!("输出画幅：横向16:9画幅并锁定准确裁切。相机：平视广角机位，保持透视、地平线与取景范围。固定布局：逐区描述前景、中景和背景中物体的数量、位置、尺度、遮挡与间距。外观：准确描述可见颜色、形状、材质和纹理。光线：柔和定向自然光，保留高光、反射和阴影关系。不变量：锁定主体数量、开放区域、边界、比例与简洁表面。{}", "继续保留每个可见物体的准确空间关系和真实表面细节。".repeat(5));
-        let nano_en = format!("FRAME AND CAMERA: generate a 16:9 landscape image from an eye-level wide-angle camera with exact crop and perspective. EXACT SPATIAL LAYOUT: reconstruct foreground, midground, and background object counts, positions, scale, orientation, overlap, spacing, and boundaries. MATERIALS AND COLOR: reproduce visible materials, colors, forms, and fine textures accurately. LIGHT AND ATMOSPHERE: use soft directional daylight with balanced reflections, highlights, and shadows. LOCKED CONDITIONS: keep the specified subjects, open regions, proportions, edges, and uncluttered surfaces fixed. {}", "Precise standalone text-to-image reconstruction detail. ".repeat(8));
-        let nano_zh = format!("画幅与相机：生成横向16:9画面，采用平视广角机位并锁定准确裁切和透视。精确空间布局：逐区重建前景、中景和背景中物体的数量、位置、尺度、朝向、遮挡、间距与边界。材质与色彩：准确还原可见材质、颜色、形状和细密纹理。光线与氛围：使用柔和定向自然光，平衡反射、高光与阴影。锁定条件：固定指定主体、开放区域、比例、边缘与简洁表面。{}", "仅凭文字继续锁定每个可见物体的准确空间关系和真实表面细节。".repeat(5));
-        let result = serde_json::json!({
-            "model_prompts": {
-                "gpt_image_2": { "prompt_en": gpt_en, "prompt_zh": gpt_zh },
-                "nano_banana": { "prompt_en": nano_en, "prompt_zh": nano_zh }
-            }
-        });
+    fn model_prompt_contract_rejects_shallow_visual_blueprint() {
+        let mut result = complete_model_prompt_result();
+        result["reconstruction_blueprint"]["fixed_layout"] = serde_json::json!(["只有一个笼统区域"]);
 
-        assert!(validate_model_prompt_contract(&result).is_ok());
+        let error = validate_model_prompt_contract(&result).unwrap_err();
+        assert!(error.contains("fixed_layout needs at least 3 entries"));
     }
 
+    #[test]
+    fn model_prompt_contract_accepts_detailed_natural_prompts() {
+        let result = complete_model_prompt_result();
+        assert!(validate_model_prompt_contract(&result).is_ok());
+    }
     #[test]
     fn structured_prompt_preserves_reconstruction_blueprint_and_model_prompts() {
         let result = serde_json::json!({

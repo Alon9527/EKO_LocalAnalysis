@@ -1,9 +1,13 @@
 (function (root) {
-  const GPT_SECTIONS = ['OUTPUT FRAME', 'CAMERA', 'FIXED LAYOUT', 'APPEARANCE', 'LIGHTING', 'INVARIANTS'];
-  const NANO_SECTIONS = ['FRAME AND CAMERA', 'EXACT SPATIAL LAYOUT', 'MATERIALS AND COLOR', 'LIGHT AND ATMOSPHERE', 'LOCKED CONDITIONS'];
-  const GPT_ZH_SECTIONS = ['输出画幅', '相机', '固定布局', '外观', '光线', '不变量'];
-  const NANO_ZH_SECTIONS = ['画幅与相机', '精确空间布局', '材质与色彩', '光线与氛围', '锁定条件'];
-
+  const FORBIDDEN_HEADINGS = [
+    'OUTPUT FRAME', 'FIXED LAYOUT', 'LOCKED CONDITIONS',
+    'SCENE & PURPOSE', 'RENDERING INTENT',
+    '输出画幅：', '固定布局：', '锁定条件：', '场景与用途：', '渲染意图：',
+  ];
+  const REFERENCE_DEPENDENCIES = [
+    'reference image', 'based on the reference', 'refer to the image',
+    '参考图', '保持原图', '与原图一致', '如图',
+  ];
   function filenameFromUrl(url) {
     try {
       const parsed = new URL(url);
@@ -50,24 +54,31 @@
     const gptZh = nonEmpty(item?.promptGptImageZh);
     const nanoEn = nonEmpty(item?.promptNanoBananaEn);
     const nanoZh = nonEmpty(item?.promptNanoBananaZh);
-    const missingGptSections = gptEn ? GPT_SECTIONS.filter((section) => !gptEn.includes(section)) : [];
-    const missingNanoSections = nanoEn ? NANO_SECTIONS.filter((section) => !nanoEn.includes(section)) : [];
-    const missingGptZhSections = gptZh ? GPT_ZH_SECTIONS.filter((section) => !gptZh.includes(section)) : [];
-    const missingNanoZhSections = nanoZh ? NANO_ZH_SECTIONS.filter((section) => !nanoZh.includes(section)) : [];
 
-    if (missingGptSections.length) issues.push('GPT sections: ' + missingGptSections.join(', '));
-    if (missingNanoSections.length) issues.push('Nano sections: ' + missingNanoSections.join(', '));
-    if (gptEn && gptEn.trim().split(/\s+/).length < 70) issues.push('GPT English 过短');
-    if (nanoEn && nanoEn.trim().split(/\s+/).length < 70) issues.push('Nano English 过短');
-    if (missingGptZhSections.length) issues.push('GPT 中文段落: ' + missingGptZhSections.join('、'));
-    if (missingNanoZhSections.length) issues.push('Nano 中文段落: ' + missingNanoZhSections.join('、'));
-    if (gptZh && (gptZh.match(/\S/g) || []).length < 140) issues.push('GPT 中文过短');
-    if (nanoZh && (nanoZh.match(/\S/g) || []).length < 140) issues.push('Nano 中文过短');
+    if (gptEn && gptEn.trim().split(/\s+/).length < 100) issues.push('GPT English 仍是摘要');
+    if (nanoEn && nanoEn.trim().split(/\s+/).length < 120) issues.push('Nano English 仍是摘要');
+    if (gptZh && (gptZh.match(/\S/g) || []).length < 180) issues.push('GPT 中文仍是摘要');
+    if (nanoZh && (nanoZh.match(/\S/g) || []).length < 220) issues.push('Nano 中文仍是摘要');
+
+    if (nanoEn && !/^(create|generate|produce)\s/i.test(nanoEn.trim())) {
+      issues.push('Nano Prompt 必须以 Create、Generate 或 Produce 开头');
+    }
+
+    for (const prompt of [gptEn, gptZh, nanoEn, nanoZh].filter(Boolean)) {
+      const upper = prompt.toUpperCase();
+      const lower = prompt.toLowerCase();
+      const headings = FORBIDDEN_HEADINGS.filter((heading) => upper.includes(heading.toUpperCase()));
+      const dependencies = REFERENCE_DEPENDENCIES.filter((phrase) => lower.includes(phrase.toLowerCase()));
+      if (headings.length) issues.push('包含旧模板标题: ' + headings.join(', '));
+      if (dependencies.length) issues.push('依赖不可用参考图: ' + dependencies.join(', '));
+    }
+
+    if (gptEn && gptEn === nanoEn) issues.push('GPT 与 Nano English 内容相同');
+    if (gptZh && gptZh === nanoZh) issues.push('GPT 与 Nano 中文内容相同');
     if (!issues.length) return '';
 
-    return '插件收到旧版或不完整的 Prompt 格式。请确认 EKO 桌面端已更新到 v1.4.3 或更高版本，然后重新分析。问题：' + issues.join('; ');
+    return '插件收到摘要级或旧版 Prompt。请确认 EKO 桌面端已更新，然后使用较强视觉模型重新分析。问题：' + issues.join('; ');
   }
-
   function normalizeError(error) {
     const message = error?.message || String(error || 'unknown');
     if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(message)) {
