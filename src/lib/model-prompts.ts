@@ -15,32 +15,14 @@ export function getModelPrompt(
   if (!item) return "";
 
   if (target === "nano") {
-    if (lang === "zh") {
-      return nonEmpty(item.promptNanoBananaZh)
-        || nonEmpty(item.promptNanoBananaEn)
-        || nonEmpty(item.prompt_zh)
-        || nonEmpty(item.prompt_en)
-        || "";
-    }
-    return nonEmpty(item.promptNanoBananaEn)
-      || nonEmpty(item.promptNanoBananaZh)
-      || nonEmpty(item.prompt_en)
-      || nonEmpty(item.prompt_zh)
-      || "";
+    return lang === "zh"
+      ? nonEmpty(item.promptNanoBananaZh) || ""
+      : nonEmpty(item.promptNanoBananaEn) || "";
   }
 
-  if (lang === "zh") {
-    return nonEmpty(item.promptGptImageZh)
-      || nonEmpty(item.prompt_zh)
-      || nonEmpty(item.promptGptImageEn)
-      || nonEmpty(item.prompt_en)
-      || "";
-  }
-  return nonEmpty(item.promptGptImageEn)
-    || nonEmpty(item.prompt_en)
-    || nonEmpty(item.promptGptImageZh)
-    || nonEmpty(item.prompt_zh)
-    || "";
+  return lang === "zh"
+    ? nonEmpty(item.promptGptImageZh) || ""
+    : nonEmpty(item.promptGptImageEn) || "";
 }
 
 export function setModelPrompt(

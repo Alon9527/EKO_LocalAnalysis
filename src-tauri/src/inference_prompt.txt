@@ -18,14 +18,14 @@ A. gpt_image_2
 - OUTPUT FRAME 写明横竖方向和准确画幅；CAMERA 写明机位高度感、视角、镜头感、透视、地平线与裁切。
 - FIXED LAYOUT 按前景左/中/右、中景左/中/右、背景逐区描述；优先写准确数量、相对尺寸、遮挡、平行或垂直关系。
 - INVARIANTS 用正向语句锁定最容易跑偏的结构、开放区域、简洁表面和唯一主体。
-- 文字紧凑、生产可用，英文不超过 520 words。避免为了“高级感”新增家具、装饰、建筑开口或改变房间比例。
+- 英文必须使用 OUTPUT FRAME、CAMERA、FIXED LAYOUT、APPEARANCE、LIGHTING、INVARIANTS 六个标签，至少 70 words，不超过 520 words。中文必须使用 输出画幅、相机、固定布局、外观、光线、不变量 六个对应标签，至少 140 个非空白字符。避免为了“高级感”新增家具、装饰、建筑开口或改变房间比例。
 
 B. nano_banana
 - 使用指令式、独立的纯文本重建规格，开头直接说明生成的画面类型和画幅。
 - 按 FRAME AND CAMERA、EXACT SPATIAL LAYOUT、MATERIALS AND COLOR、LIGHT AND ATMOSPHERE、LOCKED CONDITIONS 排列。
 - EXACT SPATIAL LAYOUT 必须逐区写出位置、数量、形状、朝向、尺度、重叠关系和背景边界；让模型可以仅凭文字重建画面。
 - 对构图关系使用明确空间词，例如 foreground left、center-right、behind、parallel to、cropped at the edge、occupies one third of the frame。
-- 英文不超过 620 words。不得要求模型查看或依赖参考图。
+- 英文必须使用 FRAME AND CAMERA、EXACT SPATIAL LAYOUT、MATERIALS AND COLOR、LIGHT AND ATMOSPHERE、LOCKED CONDITIONS 五个标签，至少 70 words，不超过 620 words。中文必须使用 画幅与相机、精确空间布局、材质与色彩、光线与氛围、锁定条件 五个对应标签，至少 140 个非空白字符。不得要求模型查看或依赖参考图。
 
 输出 JSON 必须使用以下结构：
 {
@@ -102,5 +102,7 @@ Hard output contract:
 - model_prompts.nano_banana.prompt_en and prompt_zh are mandatory and must be non-empty.
 - The GPT English prompt must literally include these uppercase section labels: OUTPUT FRAME, CAMERA, FIXED LAYOUT, APPEARANCE, LIGHTING, INVARIANTS.
 - The Nano Banana English prompt must literally include these uppercase section labels: FRAME AND CAMERA, EXACT SPATIAL LAYOUT, MATERIALS AND COLOR, LIGHT AND ATMOSPHERE, LOCKED CONDITIONS.
+- The GPT Chinese prompt must literally include these section labels: 输出画幅, 相机, 固定布局, 外观, 光线, 不变量.
+- The Nano Banana Chinese prompt must literally include these section labels: 画幅与相机, 精确空间布局, 材质与色彩, 光线与氛围, 锁定条件.
 - Never replace either model-specific prompt with a short scene summary. Root prompt_en and prompt_zh only mirror the complete GPT prompt for backward compatibility.
 Return JSON only.

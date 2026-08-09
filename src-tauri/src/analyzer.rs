@@ -457,6 +457,8 @@ fn validate_model_prompt_contract(result: &Value) -> Result<(), String> {
         "LIGHT AND ATMOSPHERE",
         "LOCKED CONDITIONS",
     ];
+    const GPT_ZH_SECTIONS: &[&str] = &["输出画幅", "相机", "固定布局", "外观", "光线", "不变量"];
+    const NANO_ZH_SECTIONS: &[&str] = &["画幅与相机", "精确空间布局", "材质与色彩", "光线与氛围", "锁定条件"];
 
     let gpt_en = model_prompt_text(result, &["gpt_image_2"], "prompt_en");
     let gpt_zh = model_prompt_text(result, &["gpt_image_2"], "prompt_zh");
@@ -496,6 +498,43 @@ fn validate_model_prompt_contract(result: &Value) -> Result<(), String> {
             .collect::<Vec<_>>();
         if !missing.is_empty() {
             issues.push(format!("nano_banana missing sections: {}", missing.join(", ")));
+        }
+    }
+
+    if let Some(prompt) = gpt_en.as_deref() {
+        if prompt.split_whitespace().count() < 70 {
+            issues.push("GPT English prompt is too short (minimum 70 words)".to_string());
+        }
+    }
+    if let Some(prompt) = nano_en.as_deref() {
+        if prompt.split_whitespace().count() < 70 {
+            issues.push("Nano Banana English prompt is too short (minimum 70 words)".to_string());
+        }
+    }
+    if let Some(prompt) = gpt_zh.as_deref() {
+        let missing = GPT_ZH_SECTIONS
+            .iter()
+            .filter(|section| !prompt.contains(**section))
+            .copied()
+            .collect::<Vec<_>>();
+        if !missing.is_empty() {
+            issues.push(format!("GPT 中文提示词缺少结构段落: {}", missing.join("、")));
+        }
+        if prompt.chars().filter(|character| !character.is_whitespace()).count() < 140 {
+            issues.push("GPT 中文提示词过短（至少 140 个非空白字符）".to_string());
+        }
+    }
+    if let Some(prompt) = nano_zh.as_deref() {
+        let missing = NANO_ZH_SECTIONS
+            .iter()
+            .filter(|section| !prompt.contains(**section))
+            .copied()
+            .collect::<Vec<_>>();
+        if !missing.is_empty() {
+            issues.push(format!("Nano Banana 中文提示词缺少结构段落: {}", missing.join("、")));
+        }
+        if prompt.chars().filter(|character| !character.is_whitespace()).count() < 140 {
+            issues.push("Nano Banana 中文提示词过短（至少 140 个非空白字符）".to_string());
         }
     }
 
@@ -633,6 +672,8 @@ mod tests {
         assert!(instruction.contains("gpt_image_2"));
         assert!(instruction.contains("nano_banana"));
         assert!(instruction.contains("EXACT SPATIAL LAYOUT"));
+        assert!(instruction.contains("输出画幅"));
+        assert!(instruction.contains("精确空间布局"));
         assert!(instruction.contains("reconstruction_blueprint"));
     }
 
@@ -691,17 +732,36 @@ mod tests {
     }
 
     #[test]
-    fn model_prompt_contract_accepts_complete_model_sections() {
+    fn model_prompt_contract_rejects_short_chinese_summaries() {
         let result = serde_json::json!({
             "model_prompts": {
                 "gpt_image_2": {
                     "prompt_en": "OUTPUT FRAME: 16:9. CAMERA: eye level. FIXED LAYOUT: foreground and background. APPEARANCE: realistic. LIGHTING: daylight. INVARIANTS: one subject.",
-                    "prompt_zh": "输出画幅、相机、固定布局、外观、光线和不变量均已完整描述。"
+                    "prompt_zh": "一个明亮的厨房场景。"
                 },
                 "nano_banana": {
                     "prompt_en": "FRAME AND CAMERA: 16:9 eye level. EXACT SPATIAL LAYOUT: foreground and background. MATERIALS AND COLOR: realistic. LIGHT AND ATMOSPHERE: daylight. LOCKED CONDITIONS: one subject.",
-                    "prompt_zh": "画幅与相机、精确空间布局、材质色彩、光线氛围和锁定条件均已完整描述。"
+                    "prompt_zh": "一个明亮的厨房场景。"
                 }
+            }
+        });
+
+        let error = validate_model_prompt_contract(&result).unwrap_err();
+
+        assert!(error.contains("GPT 中文提示词"));
+        assert!(error.contains("Nano Banana 中文提示词"));
+    }
+
+    #[test]
+    fn model_prompt_contract_accepts_complete_model_sections() {
+        let gpt_en = format!("OUTPUT FRAME: 16:9 landscape frame. CAMERA: eye-level wide-angle view with controlled perspective and exact crop. FIXED LAYOUT: foreground, midground, and background objects keep their count, screen position, scale, overlap, and spacing. APPEARANCE: photorealistic surfaces with accurate colors, forms, and texture. LIGHTING: soft directional daylight with balanced highlights and shadows. INVARIANTS: preserve the described subject count, open areas, boundaries, proportions, and uncluttered surfaces. {}", "Detailed spatial reconstruction wording. ".repeat(8));
+        let gpt_zh = format!("输出画幅：横向16:9画幅并锁定准确裁切。相机：平视广角机位，保持透视、地平线与取景范围。固定布局：逐区描述前景、中景和背景中物体的数量、位置、尺度、遮挡与间距。外观：准确描述可见颜色、形状、材质和纹理。光线：柔和定向自然光，保留高光、反射和阴影关系。不变量：锁定主体数量、开放区域、边界、比例与简洁表面。{}", "继续保留每个可见物体的准确空间关系和真实表面细节。".repeat(5));
+        let nano_en = format!("FRAME AND CAMERA: generate a 16:9 landscape image from an eye-level wide-angle camera with exact crop and perspective. EXACT SPATIAL LAYOUT: reconstruct foreground, midground, and background object counts, positions, scale, orientation, overlap, spacing, and boundaries. MATERIALS AND COLOR: reproduce visible materials, colors, forms, and fine textures accurately. LIGHT AND ATMOSPHERE: use soft directional daylight with balanced reflections, highlights, and shadows. LOCKED CONDITIONS: keep the specified subjects, open regions, proportions, edges, and uncluttered surfaces fixed. {}", "Precise standalone text-to-image reconstruction detail. ".repeat(8));
+        let nano_zh = format!("画幅与相机：生成横向16:9画面，采用平视广角机位并锁定准确裁切和透视。精确空间布局：逐区重建前景、中景和背景中物体的数量、位置、尺度、朝向、遮挡、间距与边界。材质与色彩：准确还原可见材质、颜色、形状和细密纹理。光线与氛围：使用柔和定向自然光，平衡反射、高光与阴影。锁定条件：固定指定主体、开放区域、比例、边缘与简洁表面。{}", "仅凭文字继续锁定每个可见物体的准确空间关系和真实表面细节。".repeat(5));
+        let result = serde_json::json!({
+            "model_prompts": {
+                "gpt_image_2": { "prompt_en": gpt_en, "prompt_zh": gpt_zh },
+                "nano_banana": { "prompt_en": nano_en, "prompt_zh": nano_zh }
             }
         });
 
