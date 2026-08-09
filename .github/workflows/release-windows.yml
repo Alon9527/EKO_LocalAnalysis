@@ -1,0 +1,60 @@
+name: Release Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-windows
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Test frontend and extension contracts
+        run: npm test -- --run
+
+      - name: Test Rust contracts
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build, sign, and publish desktop release
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: EKO v__VERSION__
+          releaseBody: |
+            - Restores high-fidelity GPT Image and Nano Banana reverse-prompt generation.
+            - Adds stricter structured-output validation to prevent shallow summary prompts.
+            - Updates the Chrome extension prompt contract and package.
+          releaseDraft: false
+          prerelease: false
+          updaterJsonPreferNsis: true
+
+      - name: Upload Chrome extension
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          gh release upload "v$version" "browser-extension/EKO-browser-extension-0.2.3.zip" --clobber
