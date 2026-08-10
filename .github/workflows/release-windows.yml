@@ -24,6 +24,17 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
+      - name: Validate signing secrets
+        shell: pwsh
+        run: |
+          $key = $env:TAURI_SIGNING_PRIVATE_KEY
+          $password = $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+          if ([string]::IsNullOrWhiteSpace($key)) { throw "Signing private key is missing" }
+          if ([int][char]$key[0] -eq 0xFEFF) { throw "Signing private key contains a UTF-8 BOM" }
+          if (-not $key.StartsWith("dW50cnVzdGVkIGNvbW1lbnQ6")) { throw "Signing private key format is invalid" }
+          if ([string]::IsNullOrWhiteSpace($password)) { throw "Signing password is missing" }
+          Write-Host "Signing secrets passed format validation"
+
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
