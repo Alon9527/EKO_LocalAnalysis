@@ -2,7 +2,15 @@ use crate::materials;
 use crate::storage::{self, HistoryItem, Settings};
 use crate::AnalysisTask;
 use serde_json::Value;
+use std::time::Duration;
 use std::time::Instant;
+
+fn api_client(settings: &Settings) -> Result<reqwest::Client, reqwest::Error> {
+    reqwest::Client::builder()
+        .timeout(Duration::from_millis(settings.timeout_ms))
+        .connect_timeout(Duration::from_secs(20))
+        .build()
+}
 
 pub async fn run_analysis(task: AnalysisTask, settings: Settings) -> Result<HistoryItem, Box<dyn std::error::Error + Send + Sync>> {
     let start = Instant::now();
@@ -102,9 +110,7 @@ async fn get_image_data(task: &AnalysisTask, settings: &Settings) -> Result<(Str
         }
         "url" => {
             let url = task.image_url.as_deref().ok_or("No image URL")?;
-            let client = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_millis(settings.timeout_ms))
-                .build()?;
+            let client = api_client(settings)?;
             let resp = client.get(url).send().await.map_err(|error| transport_error(url, &error))?;
             let content_type = resp.headers()
                 .get("content-type")
@@ -165,9 +171,7 @@ async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -
         }
     });
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_millis(settings.timeout_ms))
-        .build()?;
+    let client = api_client(settings)?;
 
     let resp = client.post(&url)
         .header("Content-Type", "application/json")
@@ -262,9 +266,7 @@ fn transport_error(url: &str, error: &reqwest::Error) -> std::io::Error {
 }
 
 pub async fn test_api_connection(settings: Settings) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_millis(settings.timeout_ms))
-        .build()?;
+    let client = api_client(&settings)?;
 
     let (url, request) = if settings.provider_type == "gemini-native" {
         let api_key = storage::normalize_api_key(&settings.api_key);
@@ -351,9 +353,7 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
         ]
     });
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_millis(settings.timeout_ms))
-        .build()?;
+    let client = api_client(settings)?;
 
     let resp = client.post(&url)
         .header("Content-Type", "application/json")
