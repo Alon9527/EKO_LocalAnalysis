@@ -145,6 +145,117 @@ fn build_inference_instruction() -> String {
     include_str!("inference_prompt.txt").to_string()
 }
 
+fn build_repair_instruction(previous_text: &str, failure: &str) -> String {
+    format!(
+        "Repair the previous image-analysis response and return raw JSON only. Preserve the complete schema and every visible fact from the image. Both model_prompts.gpt_image_2 and model_prompts.nano_banana must contain distinct, complete prompt_en and prompt_zh values. Root prompt_en and prompt_zh must mirror the GPT Image prompt. Fix this validation failure: {failure}\nPrevious response:\n{previous_text}"
+    )
+}
+
+fn gemini_response_schema() -> Value {
+    let prompt_pair = serde_json::json!({
+        "type": "OBJECT",
+        "required": ["prompt_en", "prompt_zh"],
+        "properties": {
+            "prompt_en": { "type": "STRING" },
+            "prompt_zh": { "type": "STRING" }
+        }
+    });
+    serde_json::json!({
+        "type": "OBJECT",
+        "required": [
+            "global_scene", "composition", "reconstruction_blueprint", "entities",
+            "environment_details", "technical_specs", "aspect_ratio", "contains_people",
+            "embedded_text", "model_prompts", "prompt_en", "prompt_zh"
+        ],
+        "properties": {
+            "global_scene": {
+                "type": "OBJECT",
+                "required": ["art_style", "atmosphere", "color_palette", "lighting"],
+                "properties": {
+                    "art_style": { "type": "STRING" },
+                    "atmosphere": { "type": "STRING" },
+                    "color_palette": { "type": "ARRAY", "items": { "type": "STRING" } },
+                    "lighting": { "type": "STRING" }
+                }
+            },
+            "composition": {
+                "type": "OBJECT",
+                "required": ["camera_angle", "focal_length", "framing", "depth_of_field"],
+                "properties": {
+                    "camera_angle": { "type": "STRING" },
+                    "focal_length": { "type": "STRING" },
+                    "framing": { "type": "STRING" },
+                    "depth_of_field": { "type": "STRING" }
+                }
+            },
+            "reconstruction_blueprint": {
+                "type": "OBJECT",
+                "required": ["frame", "camera", "fixed_layout", "spatial_relationships", "surface_and_light", "scene_invariants"],
+                "properties": {
+                    "frame": { "type": "STRING" },
+                    "camera": { "type": "STRING" },
+                    "fixed_layout": { "type": "ARRAY", "items": { "type": "STRING" } },
+                    "spatial_relationships": { "type": "ARRAY", "items": { "type": "STRING" } },
+                    "surface_and_light": { "type": "STRING" },
+                    "scene_invariants": { "type": "ARRAY", "items": { "type": "STRING" } }
+                }
+            },
+            "entities": {
+                "type": "ARRAY",
+                "items": {
+                    "type": "OBJECT",
+                    "required": ["label", "appearance", "pose", "sub_elements"],
+                    "properties": {
+                        "label": { "type": "STRING" },
+                        "appearance": { "type": "STRING" },
+                        "pose": {
+                            "type": "OBJECT",
+                            "required": ["action_description", "body_language", "spatial_position"],
+                            "properties": {
+                                "action_description": { "type": "STRING" },
+                                "body_language": { "type": "STRING" },
+                                "spatial_position": { "type": "STRING" }
+                            }
+                        },
+                        "sub_elements": { "type": "ARRAY", "items": { "type": "STRING" } }
+                    }
+                }
+            },
+            "environment_details": {
+                "type": "OBJECT",
+                "required": ["foreground", "midground", "background"],
+                "properties": {
+                    "foreground": { "type": "STRING" },
+                    "midground": { "type": "STRING" },
+                    "background": { "type": "STRING" }
+                }
+            },
+            "technical_specs": {
+                "type": "OBJECT",
+                "required": ["texture_fidelity", "render_engine_style", "vfx"],
+                "properties": {
+                    "texture_fidelity": { "type": "STRING" },
+                    "render_engine_style": { "type": "STRING" },
+                    "vfx": { "type": "ARRAY", "items": { "type": "STRING" } }
+                }
+            },
+            "aspect_ratio": { "type": "STRING", "enum": ["1:1", "3:4", "4:3", "9:16", "16:9"] },
+            "contains_people": { "type": "BOOLEAN" },
+            "embedded_text": { "type": "STRING" },
+            "model_prompts": {
+                "type": "OBJECT",
+                "required": ["gpt_image_2", "nano_banana"],
+                "properties": {
+                    "gpt_image_2": prompt_pair.clone(),
+                    "nano_banana": prompt_pair
+                }
+            },
+            "prompt_en": { "type": "STRING" },
+            "prompt_zh": { "type": "STRING" }
+        }
+    })
+}
+
 async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
     let model = if settings.model.is_empty() { "gemini-2.5-flash" } else { &settings.model };
     let api_key = storage::normalize_api_key(&settings.api_key);
@@ -156,50 +267,73 @@ async fn call_gemini(image_base64: &str, mime_type: &str, settings: &Settings) -
         model, api_key
     );
 
-    let body = serde_json::json!({
-        "contents": [{
-            "role": "user",
-            "parts": [
-                { "text": build_inference_instruction() },
-                { "inline_data": { "mimeType": mime_type, "data": image_base64 } }
-            ]
-        }],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "temperature": 0.1,
-            "maxOutputTokens": 8192
-        }
-    });
-
     let client = api_client(settings)?;
+    let mut previous_text = String::new();
+    let mut failure = String::new();
 
-    let resp = client.post(&url)
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|error| transport_error(&url, &error))?;
+    for attempt in 0..2 {
+        let instruction = if attempt == 0 {
+            build_inference_instruction()
+        } else {
+            build_repair_instruction(&previous_text, &failure)
+        };
+        let body = serde_json::json!({
+            "contents": [{
+                "role": "user",
+                "parts": [
+                    { "text": instruction },
+                    { "inline_data": { "mimeType": mime_type, "data": image_base64 } }
+                ]
+            }],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": gemini_response_schema(),
+                "temperature": 0.1,
+                "maxOutputTokens": 8192
+            }
+        });
 
-    let status = resp.status();
-    let text = resp.text().await?;
+        let resp = client.post(&url)
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|error| transport_error(&url, &error))?;
 
-    if !status.is_success() {
-        return Err(format!("Gemini API error {}: {}", status, text).into());
+        let status = resp.status();
+        let text = resp.text().await?;
+        if !status.is_success() {
+            return Err(format!("Gemini API error {}: {}", status, text).into());
+        }
+
+        let data: Value = serde_json::from_str(&text)?;
+        let content_text = data["candidates"][0]["content"]["parts"]
+            .as_array()
+            .map(|parts| {
+                parts.iter()
+                    .filter_map(|part| part["text"].as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
+            .unwrap_or_default();
+        previous_text = content_text.clone();
+
+        let result = ensure_completion_not_truncated(&data)
+            .map_err(|error| error.to_string())
+            .and_then(|_| parse_and_normalize_model_response(&content_text).map_err(|error| error.to_string()))
+            .and_then(|value| {
+                validate_model_prompt_contract(&value)?;
+                Ok(value)
+            });
+        match result {
+            Ok(value) => return Ok(value),
+            Err(error) if attempt == 0 && !previous_text.trim().is_empty() => failure = error,
+            Err(error) if attempt == 0 => return Err(format!("模型返回为空或无法解析：{error}").into()),
+            Err(error) => return Err(format!("模型返回修复后仍未通过校验：{error}").into()),
+        }
     }
 
-    let data: Value = serde_json::from_str(&text)?;
-    ensure_completion_not_truncated(&data)?;
-    let content_text = data["candidates"][0]["content"]["parts"]
-        .as_array()
-        .map(|parts| {
-            parts.iter()
-                .filter_map(|p| p["text"].as_str())
-                .collect::<Vec<_>>()
-                .join("\n")
-        })
-        .unwrap_or_default();
-
-    parse_json_response(&content_text)
+    Err("Gemini response repair loop ended unexpectedly".into())
 }
 
 fn normalized_openai_credentials(settings: &Settings) -> Result<(String, String), String> {
@@ -329,75 +463,257 @@ async fn call_openai_compatible(image_url: Option<&str>, image_base64: &str, mim
         serde_json::json!({ "type": "image_url", "image_url": { "url": format!("data:{};base64,{}", mime_type, image_base64) } })
     };
 
-    let body = serde_json::json!({
-        "model": model,
-        "temperature": 0.1,
-        "max_tokens": 8192,
-        "stream": false,
-        "response_format": { "type": "json_object" },
-        "messages": [
-            {
-                "role": "system",
-                "content": build_inference_instruction()
-            },
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "Analyze this image now. Return the complete JSON contract, including both full model-specific reconstruction prompts."
-                    },
-                    image_content
-                ]
-            }
-        ]
-    });
-
     let client = api_client(settings)?;
+    let mut previous_text = String::new();
+    let mut failure = String::new();
 
-    let resp = client.post(&url)
-        .header("Content-Type", "application/json")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .json(&body)
-        .send()
-        .await
-        .map_err(|error| transport_error(&url, &error))?;
+    for attempt in 0..2 {
+        let instruction = if attempt == 0 {
+            "Analyze this image now. Return the complete JSON contract, including both full model-specific reconstruction prompts.".to_string()
+        } else {
+            build_repair_instruction(&previous_text, &failure)
+        };
+        let body = serde_json::json!({
+            "model": model,
+            "temperature": 0.1,
+            "max_tokens": 8192,
+            "stream": false,
+            "response_format": { "type": "json_object" },
+            "messages": [
+                {
+                    "role": "system",
+                    "content": build_inference_instruction()
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        { "type": "text", "text": instruction },
+                        image_content.clone()
+                    ]
+                }
+            ]
+        });
 
-    let status = resp.status();
-    let text = resp.text().await?;
+        let resp = client.post(&url)
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|error| transport_error(&url, &error))?;
 
-    if status == reqwest::StatusCode::UNAUTHORIZED {
-        return Err(unauthorized_message().into());
-    }
-    if !status.is_success() {
-        return Err(format!("API error {}: {}", status, text).into());
-    }
+        let status = resp.status();
+        let text = resp.text().await?;
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(unauthorized_message().into());
+        }
+        if !status.is_success() {
+            return Err(format!("API error {}: {}", status, text).into());
+        }
 
-    let data: Value = serde_json::from_str(&text).map_err(|err| {
-        let snippet: String = text.chars().take(300).collect();
-        format!("API returned non-JSON response: {}. Raw response starts with: {}", err, snippet)
-    })?;
-    ensure_completion_not_truncated(&data)?;
-    let content = data["choices"][0]["message"]["content"]
-        .as_str()
-        .unwrap_or("");
+        let data: Value = serde_json::from_str(&text).map_err(|error| {
+            let snippet: String = text.chars().take(300).collect();
+            format!("API returned non-JSON response: {error}. Raw response starts with: {snippet}")
+        })?;
+        let content = data["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+        previous_text = content.clone();
 
-    parse_json_response(content)
-}
-
-fn parse_json_response(text: &str) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
-    let trimmed = text.trim();
-    if let Ok(v) = serde_json::from_str::<Value>(trimmed) {
-        return Ok(v);
-    }
-    if let Some(start) = trimmed.find('{') {
-        if let Some(end) = trimmed.rfind('}') {
-            if let Ok(v) = serde_json::from_str::<Value>(&trimmed[start..=end]) {
-                return Ok(v);
-            }
+        let result = ensure_completion_not_truncated(&data)
+            .map_err(|error| error.to_string())
+            .and_then(|_| parse_and_normalize_model_response(&content).map_err(|error| error.to_string()))
+            .and_then(|value| {
+                validate_model_prompt_contract(&value)?;
+                Ok(value)
+            });
+        match result {
+            Ok(value) => return Ok(value),
+            Err(error) if attempt == 0 && !previous_text.trim().is_empty() => failure = error,
+            Err(error) if attempt == 0 => return Err(format!("模型返回为空或无法解析：{error}").into()),
+            Err(error) => return Err(format!("模型返回修复后仍未通过校验：{error}").into()),
         }
     }
-    Err("Failed to parse model response as JSON".into())
+
+    Err("OpenAI-compatible response repair loop ended unexpectedly".into())
+}
+
+fn parse_and_normalize_model_response(text: &str) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+    let mut candidates = Vec::new();
+    let trimmed = text.trim();
+    if !trimmed.is_empty() {
+        candidates.push(trimmed);
+    }
+
+    let bytes = text.as_bytes();
+    let mut start = None;
+    let mut depth = 0usize;
+    let mut in_string = false;
+    let mut escaped = false;
+    for (index, byte) in bytes.iter().enumerate() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if *byte == b'\\' {
+                escaped = true;
+            } else if *byte == b'"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        match *byte {
+            b'"' if depth > 0 => in_string = true,
+            b'{' => {
+                if depth == 0 {
+                    start = Some(index);
+                }
+                depth += 1;
+            }
+            b'}' if depth > 0 => {
+                depth -= 1;
+                if depth == 0 {
+                    if let Some(start_index) = start.take() {
+                        candidates.push(&text[start_index..=index]);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    for candidate in candidates {
+        let Ok(mut value) = serde_json::from_str::<Value>(candidate) else {
+            continue;
+        };
+        let is_prompt_payload = value.get("global_scene").is_some()
+            || value.get("composition").is_some()
+            || value.get("entities").is_some()
+            || value.get("model_prompts").is_some()
+            || value.get("prompt_en").is_some()
+            || value.get("prompt_zh").is_some()
+            || value.get("aspect_ratio").is_some();
+        if !is_prompt_payload {
+            continue;
+        }
+        normalize_model_response(&mut value);
+        return Ok(value);
+    }
+
+    Err("Failed to parse model response as a valid prompt JSON object".into())
+}
+
+fn normalize_model_response(value: &mut Value) {
+    let nano_alias = value
+        .get("model_prompts")
+        .and_then(|prompts| prompts.get("nano_banana_pro"))
+        .cloned();
+    if value
+        .get("model_prompts")
+        .and_then(|prompts| prompts.get("nano_banana"))
+        .is_none()
+    {
+        if let Some(alias) = nano_alias {
+            value["model_prompts"]["nano_banana"] = alias;
+        }
+    }
+
+    let gpt_prompt_en = value
+        .get("model_prompts")
+        .and_then(|prompts| prompts.get("gpt_image_2"))
+        .and_then(|prompt| prompt.get("prompt_en"))
+        .cloned();
+    let gpt_prompt_zh = value
+        .get("model_prompts")
+        .and_then(|prompts| prompts.get("gpt_image_2"))
+        .and_then(|prompt| prompt.get("prompt_zh"))
+        .cloned();
+    if value.get("prompt_en").and_then(Value::as_str).map(str::trim).unwrap_or("").is_empty() {
+        if let Some(prompt) = gpt_prompt_en {
+            value["prompt_en"] = prompt;
+        }
+    }
+    if value.get("prompt_zh").and_then(Value::as_str).map(str::trim).unwrap_or("").is_empty() {
+        if let Some(prompt) = gpt_prompt_zh {
+            value["prompt_zh"] = prompt;
+        }
+    }
+
+    if let Some(raw_ratio) = value.get("aspect_ratio").and_then(Value::as_str) {
+        let normalized = normalize_aspect_ratio(raw_ratio);
+        value["aspect_ratio"] = Value::String(normalized);
+    }
+
+    if let Some(raw_people) = value.get("contains_people").cloned() {
+        let normalized = match raw_people {
+            Value::Bool(flag) => Some(flag),
+            Value::String(text) => match text.trim().to_ascii_lowercase().as_str() {
+                "true" | "yes" | "y" | "1" | "有" | "是" => Some(true),
+                "false" | "no" | "n" | "0" | "无" | "否" => Some(false),
+                _ => None,
+            },
+            Value::Number(number) => number.as_i64().map(|item| item != 0),
+            _ => None,
+        };
+        if let Some(flag) = normalized {
+            value["contains_people"] = Value::Bool(flag);
+        }
+    }
+
+    if let Some(raw_text) = value.get("embedded_text").and_then(Value::as_str) {
+        let trimmed = raw_text.trim();
+        if !trimmed.is_empty() && !trimmed.starts_with("with the text \"") {
+            let short_text = trimmed.chars().take(25).collect::<String>().replace('"', "'");
+            value["embedded_text"] = Value::String(format!(
+                "with the text \"{short_text}\" in a typography"
+            ));
+        }
+    }
+}
+
+fn normalize_aspect_ratio(raw: &str) -> String {
+    const RATIOS: [(&str, f64); 5] = [
+        ("1:1", 1.0),
+        ("3:4", 0.75),
+        ("4:3", 4.0 / 3.0),
+        ("9:16", 9.0 / 16.0),
+        ("16:9", 16.0 / 9.0),
+    ];
+    let compact = raw.trim().replace(' ', "");
+    if RATIOS.iter().any(|(label, _)| *label == compact) {
+        return compact;
+    }
+
+    let separator = if compact.contains(':') {
+        ':'
+    } else if compact.contains('x') {
+        'x'
+    } else if compact.contains('X') {
+        'X'
+    } else if compact.contains('/') {
+        '/'
+    } else {
+        return "1:1".to_string();
+    };
+    let mut parts = compact.split(separator);
+    let width = parts.next().and_then(|item| item.parse::<f64>().ok());
+    let height = parts.next().and_then(|item| item.parse::<f64>().ok());
+    let ratio = match (width, height) {
+        (Some(width), Some(height)) if width > 0.0 && height > 0.0 => width / height,
+        _ => return "1:1".to_string(),
+    };
+
+    RATIOS
+        .iter()
+        .min_by(|(_, left), (_, right)| {
+            (ratio - *left)
+                .abs()
+                .partial_cmp(&(ratio - *right).abs())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(label, _)| (*label).to_string())
+        .unwrap_or_else(|| "1:1".to_string())
 }
 
 fn value_text(value: Option<&Value>) -> Option<String> {
@@ -861,6 +1177,79 @@ mod tests {
         assert_eq!(structured["reconstruction_blueprint"]["frame"], "16:9 landscape");
         assert_eq!(structured["model_prompts"]["gpt_image_2"]["prompt_en"], "gpt");
         assert_eq!(structured["model_prompts"]["nano_banana"]["prompt_en"], "nano");
+    }
+
+    #[test]
+    fn model_response_parser_selects_the_valid_json_candidate() {
+        let response = r#"
+Analysis draft: {"status":"thinking"}
+```json
+{
+  "aspect_ratio": "16:9",
+  "contains_people": false,
+  "embedded_text": "",
+  "model_prompts": {
+    "gpt_image_2": {"prompt_en":"gpt", "prompt_zh":"GPT"},
+    "nano_banana": {"prompt_en":"nano", "prompt_zh":"Nano"}
+  }
+}
+```
+"#;
+
+        let parsed = parse_and_normalize_model_response(response).unwrap();
+
+        assert_eq!(parsed["aspect_ratio"], "16:9");
+        assert_eq!(parsed["contains_people"], false);
+        assert_eq!(parsed["model_prompts"]["gpt_image_2"]["prompt_en"], "gpt");
+    }
+
+    #[test]
+    fn model_response_normalizes_common_schema_variants() {
+        let response = r#"{
+          "aspect_ratio": "1920x1080",
+          "contains_people": "yes",
+          "embedded_text": "EKO SMART BIN",
+          "model_prompts": {
+            "gpt_image_2": {"prompt_en":"complete gpt prompt", "prompt_zh":"完整 GPT 提示词"},
+            "nano_banana_pro": {"prompt_en":"complete nano prompt", "prompt_zh":"完整 Nano 提示词"}
+          }
+        }"#;
+
+        let parsed = parse_and_normalize_model_response(response).unwrap();
+
+        assert_eq!(parsed["aspect_ratio"], "16:9");
+        assert_eq!(parsed["contains_people"], true);
+        assert_eq!(parsed["embedded_text"], "with the text \"EKO SMART BIN\" in a typography");
+        assert_eq!(parsed["prompt_en"], "complete gpt prompt");
+        assert_eq!(parsed["prompt_zh"], "完整 GPT 提示词");
+        assert_eq!(parsed["model_prompts"]["nano_banana"]["prompt_en"], "complete nano prompt");
+    }
+
+    #[test]
+    fn repair_instruction_preserves_the_full_dual_model_contract() {
+        let instruction = build_repair_instruction("{broken}", "missing nano prompt");
+
+        assert!(instruction.contains("model_prompts.gpt_image_2"));
+        assert!(instruction.contains("model_prompts.nano_banana"));
+        assert!(instruction.contains("missing nano prompt"));
+        assert!(instruction.contains("{broken}"));
+    }
+
+    #[test]
+    fn gemini_schema_requires_the_dual_model_prompt_contract() {
+        let schema = gemini_response_schema();
+        let required = schema["required"].as_array().unwrap();
+
+        assert!(required.contains(&serde_json::json!("model_prompts")));
+        assert!(required.contains(&serde_json::json!("reconstruction_blueprint")));
+        assert_eq!(
+            schema["properties"]["model_prompts"]["properties"]["gpt_image_2"]["required"],
+            serde_json::json!(["prompt_en", "prompt_zh"])
+        );
+        assert_eq!(
+            schema["properties"]["model_prompts"]["properties"]["nano_banana"]["required"],
+            serde_json::json!(["prompt_en", "prompt_zh"])
+        );
     }
 
     #[test]

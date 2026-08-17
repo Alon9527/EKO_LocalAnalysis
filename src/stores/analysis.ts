@@ -49,7 +49,7 @@ export const useAnalysisStore = defineStore("analysis", () => {
           ? "AI 正在识别画面..."
           : roundedPercent < 82
             ? "正在组织结构化分析..."
-            : "正在生成双模型提示词...";
+            : "正在生成并校验双模型提示词...";
       progress.value = { percent: roundedPercent, text };
     }, 500);
 
