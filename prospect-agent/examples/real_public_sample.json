@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "description": "2026-11-01 Asia/Shanghai: three real public-source examples; partial excerpts, all claims PENDING. These are not 20 qualified customers. No contacts guessed. No EKO relationship asserted.",
+  "companies": [
+    {
+      "name": "KaTom Restaurant Supply",
+      "website": "https://www.katom.com/",
+      "market": "US",
+      "customer_type": "commercial facilities distributor",
+      "sources": [
+        {
+          "url": "https://www.katom.com/help.html",
+          "text": "To be considered, please email vendors@katom.com\na member of our vendor team",
+          "retrieved_at": "2026-10-31T17:39:54+00:00",
+          "captured_by": "Codex public-source retrieval; short excerpts; not human review",
+          "claims": [
+            {
+              "kind": "supplier_access",
+              "quote": "To be considered, please email vendors@katom.com",
+              "value": "vendors@katom.com"
+            },
+            {
+              "kind": "email",
+              "quote": "To be considered, please email vendors@katom.com",
+              "value": "vendors@katom.com"
+            }
+          ]
+        },
+        {
+          "url": "https://www.katom.com/cat/trash-cans-accessories.html",
+          "text": "Commercial Trash Cans\nKaTom Restaurant Supply is a national leader in wholesale commercial kitchen equipment and supplies",
+          "retrieved_at": "2026-10-31T17:39:54+00:00",
+          "captured_by": "Codex public-source retrieval; short excerpts; not human review",
+          "claims": [
+            {
+              "kind": "category",
+              "quote": "Commercial Trash Cans"
+            },
+            {
+              "kind": "channel",
+              "quote": "KaTom Restaurant Supply is a national leader in wholesale commercial kitchen equipment and supplies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Global Industrial",
+      "website": "https://www.globalindustrial.com/",
+      "market": "US",
+      "customer_type": "commercial facilities supplier",
+      "sources": [
+        {
+          "url": "https://www.globalindustrial.com/suppliers",
+          "text": "Sign Up for Global Industrial Supplier Program\nUS - English",
+          "retrieved_at": "2026-10-31T17:39:55+00:00",
+          "captured_by": "Codex public-source retrieval; short excerpts; not human review",
+          "claims": [
+            {
+              "kind": "supplier_access",
+              "quote": "Sign Up for Global Industrial Supplier Program"
+            },
+            {
+              "kind": "market",
+              "quote": "US - English",
+              "value": "US"
+            }
+          ]
+        },
+        {
+          "url": "https://www.globalindustrial.com/p/global-industrial-153-stainless-steel-round-open-top-receptacle-16-gallon",
+          "text": "Global Industrial™ Stainless Steel Round Open Top Trash Can, 16 Gallon",
+          "retrieved_at": "2026-10-31T17:40:03+00:00",
+          "captured_by": "Codex public-source retrieval; short excerpts; not human review",
+          "claims": [
+            {
+              "kind": "category",
+              "quote": "Global Industrial™ Stainless Steel Round Open Top Trash Can, 16 Gallon"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tractor Supply Company",
+      "website": "https://www.tractorsupply.com/",
+      "market": "US",
+      "customer_type": "retailer",
+      "sources": [
+        {
+          "url": "https://corporate.tractorsupply.com/newsroom/news-releases/news-releases-details/2026/Tractor-Supply-Celebrates-Grand-Opening-of-11th-Distribution-Center-in-Nampa-Idaho/default.aspx",
+          "text": "September 23, 2026\ngrand opening of its 11th distribution center, located in Nampa, Idaho.\nlargest rural lifestyle retailer in the United States",
+          "retrieved_at": "2026-10-31T17:40:12+00:00",
+          "captured_by": "Codex public-source retrieval; short excerpts; not human review",
+          "claims": [
+            {
+              "kind": "expansion",
+              "quote": "grand opening of its 11th distribution center, located in Nampa, Idaho.",
+              "event_date": "2026-09-23",
+              "date_quote": "September 23, 2026",
+              "value": "nampa-distribution-center"
+            },
+            {
+              "kind": "channel",
+              "quote": "largest rural lifestyle retailer in the United States"
+            },
+            {
+              "kind": "market",
+              "quote": "largest rural lifestyle retailer in the United States",
+              "value": "US"
+            }
+          ]
+        },
+        {
+          "url": "https://www.tractorsupply.com/tsc/cms/vendor-resource-center",
+          "text": "Potential New Vendor Partner Submissions",
+          "retrieved_at": "2026-10-31T17:40:05+00:00",
+          "captured_by": "Codex public-source retrieval; short excerpts; not human review",
+          "claims": [
+            {
+              "kind": "supplier_access",
+              "quote": "Potential New Vendor Partner Submissions"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eko-prospect-agent"
+version = "0.1.0"
+description = "Evidence-first public prospect research with human review"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+eko-prospect = "eko_prospect.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["eko_prospect*"]
