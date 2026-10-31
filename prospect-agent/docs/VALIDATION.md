@@ -54,5 +54,9 @@
 - 代理模式明确依赖所配置出口网关的私网目标阻断能力；无法从客户端证明网关内部策略。默认直连采用公共 IP 校验与地址固定。
 - Brave 适配器按官方接口实现，但未配置真实付费密钥，未宣称完成生产 API 验证。可用 CSV 和公开官网完成整条流水线。
 - 没有邮箱投递探测、付费联系人库、验证码绕过或 LinkedIn 自动爬取。没有虚构决策人。共享集团关系须由人录入；未识别的集团不会被自动猜测。
-- 43项本地测试在 Linux/Python3.12执行；已提供 GitHub Actions 的 Python3.11/3.12 × Ubuntu/Windows 矩阵。远端 CI 结果以 PR 中实际运行状态为准。
+- 43项本地测试在 Linux/Python3.12执行；GitHub Actions 的 Python3.11/3.12 × Ubuntu/Windows 四种组合均已通过：[运行记录](https://github.com/Alon9527/EKO_LocalAnalysis/actions/runs/41226757504)。该记录验证代码提交 becf2d0，后续交付记录补充仅修改文档。
 - 未取得用户电脑上未推送项目的访问权限，不能排除本地已有相关实现。
+
+## GitHub交付
+
+[Pull Request #2](https://github.com/Alon9527/EKO_LocalAnalysis/pull/2)，分支 `codex/eko-prospect-agent-v1-1101`，未合并。终端无GitHub写入凭据，因此使用已授权GitHub连接创建分支。首个远端提交的tree SHA与本地43项测试通过的tree SHA完全相同：`d535ac53b1e7cebb94d8c5b91391ccfadd5cfbfc`。

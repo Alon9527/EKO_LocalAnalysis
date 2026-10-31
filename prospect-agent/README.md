@@ -6,10 +6,11 @@
 
 ## 3 分钟开始
 
-在终端进入本目录（Windows 可使用 `py` 替代 `python`）：
+先从 PR 分支取得代码（已有仓库可切换到此分支）。Windows 可使用 `py` 替代 `python`：
 
 ```bash
-cd prospect-agent
+git clone --branch codex/eko-prospect-agent-v1-1101 https://github.com/Alon9527/EKO_LocalAnalysis.git
+cd EKO_LocalAnalysis/prospect-agent
 python -m eko_prospect --db workspace/demo.sqlite import examples/real_public_sample.json
 python -m eko_prospect --db workspace/demo.sqlite serve
 ```

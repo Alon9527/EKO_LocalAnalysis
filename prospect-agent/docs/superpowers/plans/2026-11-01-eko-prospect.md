@@ -43,4 +43,6 @@ Files: examples/real_public_sample.json; README.md; docs/VALIDATION.md; AGENTS.m
 - [x] Recheck three actual companies using official sources; preserve exact short excerpts, dates, capture provenance, leave missing values.
 - [x] Run offline reproducible E2E, live acquisition attempts, fresh install and UI smoke test.
 - [x] Independent whole-branch review; fix important findings using regression tests.
-- [ ] Push branch and open PR; do not merge.
+- [x] Push branch and open PR; do not merge.
+
+Delivery: https://github.com/Alon9527/EKO_LocalAnalysis/pull/2 . GitHub connector created the branch from the exact locally tested tree; main remains unchanged.
