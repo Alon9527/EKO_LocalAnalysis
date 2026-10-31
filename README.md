@@ -50,3 +50,7 @@ $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "your-signing-key-password"
 ## License
 
 MIT
+
+## 海外客户开发 Agent（独立模块）
+
+新增的公开客户研究工具位于 [prospect-agent](prospect-agent/README.md)：独立 Python + SQLite 运行，包含来源核验、人工复核与 CSV 导出。与图片反推程序的构建、数据和模型配置独立。

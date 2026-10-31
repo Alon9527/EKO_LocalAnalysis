@@ -1,0 +1,25 @@
+name: EKO prospect agent tests
+on:
+  pull_request:
+    paths: ['prospect-agent/**', '.github/workflows/prospect-agent.yml']
+  push:
+    paths: ['prospect-agent/**', '.github/workflows/prospect-agent.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: prospect-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest discover -s tests -v
+      - run: python -m compileall -q eko_prospect
